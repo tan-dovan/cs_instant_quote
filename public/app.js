@@ -874,11 +874,25 @@ function recalc(){
     fb.innerHTML=fh;
   }
   renderBd('csBreakdown',csSmart.breakdown,csSmart.total);
-  $('csTotal').textContent=fmt(csSmart.total);$('csTotal').style.color=csSmart.total<=best.total?'var(--green)':'var(--cs-green)';
-  renderBd('bestBreakdown',best.breakdown,best.total,csSmart.total);
-  $('bestTotal').textContent=fmt(best.total)+' ('+best.name+')';$('bestTotal').style.color=best.total<=csSmart.total?'var(--green)':'var(--red)';
+  // Check if services are comparable (no CS-exclusive services configured)
+  var hasExclusive=calcPaas()>0||calcOmnifabric()>0||calcTaas()>0;
+  var bestCard=$('bestAlternativeCard'),cmpSec=$('section-body-cmp');
+  if(hasExclusive){
+    $('csTotal').textContent=fmt(csSmart.total);$('csTotal').style.color='var(--cs-green)';
+    if(bestCard){bestCard.style.display='none';}
+  } else {
+    if(bestCard){bestCard.style.display='';}
+    $('csTotal').textContent=fmt(csSmart.total);$('csTotal').style.color=csSmart.total<=best.total?'var(--green)':'var(--cs-green)';
+    renderBd('bestBreakdown',best.breakdown,best.total,csSmart.total);
+    $('bestTotal').textContent=fmt(best.total)+' ('+best.name+')';$('bestTotal').style.color=best.total<=csSmart.total?'var(--green)':'var(--red)';
+  }
   var provs=[{name:'CloudSigma',tag:'cloudsigma',region:currentLocation.display_name,total:csSmart.total}].concat(all);
-  $('compGrid').innerHTML=provs.map(function(p){var diff=p.total-cs.total;var pct=cs.total>0?Math.round((diff/cs.total)*100):0;var sav='';if(p.tag==='cloudsigma'){sav=cs.total<=best.total?'<div class="comp-savings" style="color:var(--green)">\u2713 Cheapest</div>':'<div class="comp-savings" style="color:var(--orange)">Not cheapest</div>'}else if(diff>0){sav='<div class="comp-savings" style="color:var(--red)">+'+fmt(diff)+' (+'+pct+'%)</div>'}else if(diff<0){sav='<div class="comp-savings" style="color:var(--green)">'+fmt(diff)+' ('+pct+'%)</div>'}else{sav='<div class="comp-savings" style="color:var(--text-secondary)">Same</div>'}return'<div class="comp-card '+p.tag+'"><div class="comp-name">'+p.name+'</div><div class="comp-region">'+p.region+'</div><div class="comp-cost">'+fmt(p.total)+'</div>'+sav+'</div>'}).join('');
+  if(hasExclusive){
+    $('compGrid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:2rem 1rem;color:var(--text-secondary);font-size:.85rem"><p style="font-size:1.2rem;margin-bottom:.5rem">⚠️</p>Provider comparison not available when PaaS, Omnifabric, or TaaS services are included.<br>These services are exclusive to CloudSigma and have no direct equivalent with AWS, Azure, or GCP.<br><br><span style="font-size:.78rem">Remove PaaS/Omnifabric/TaaS configurations to enable comparison.</span></div>';
+  } else {
+    var csRef=csSmart.total;
+    $('compGrid').innerHTML=provs.map(function(p){var diff=p.total-csRef;var pct=csRef>0?Math.round((diff/csRef)*100):0;var sav='';if(p.tag==='cloudsigma'){sav=csRef<=best.total?'<div class="comp-savings" style="color:var(--green)">\u2713 Cheapest</div>':'<div class="comp-savings" style="color:var(--orange)">Not cheapest</div>'}else if(diff>0){sav='<div class="comp-savings" style="color:var(--red)">+'+fmt(diff)+' (+'+pct+'%)</div>'}else if(diff<0){sav='<div class="comp-savings" style="color:var(--green)">'+fmt(diff)+' ('+pct+'%)</div>'}else{sav='<div class="comp-savings" style="color:var(--text-secondary)">Same</div>'}return'<div class="comp-card '+p.tag+'"><div class="comp-name">'+p.name+'</div><div class="comp-region">'+p.region+'</div><div class="comp-cost">'+fmt(p.total)+'</div>'+sav+'</div>'}).join('');
+  }
 }
 function renderBd(elId,bd,total,cmpT){
   var el=$(elId);var h='';
