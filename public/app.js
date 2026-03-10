@@ -71,6 +71,7 @@ function csUnitPrice(resource,level){
 }
 function csSubPrice(r){return csUnitPrice(r,0);}
 function csBurstPrice(r){var bl=burstLevels[r];if(bl===undefined)bl=1;return csUnitPrice(r,bl);}
+function csSmartPrice(r){var s=csSubPrice(r);return s>0?s:csBurstPrice(r);}
 
 function hasVMware(){
   var avail=pricing.resource_types?Object.keys(pricing.resource_types):[];
@@ -821,7 +822,13 @@ function addBurstOnlyItems(r){
   return r;
 }
 function calcCS(){return calcCSMode(csSubPrice);}
-function calcCSBurst(){return addBurstOnlyItems(calcCSMode(csBurstPrice));}
+function calcCSBurst(){return calcCSMode(csBurstPrice);}
+function calcCSSmart(){
+  var r=addBurstOnlyItems(calcCSMode(csSmartPrice));
+  r.subTotal=calcCS().total;
+  r.burstTotal=r.total-r.subTotal;
+  return r;
+}
 
 function calcComp(prov){
   var bd={};var vmT=0,winT=0,bkT=0,ipT=0,gpuT=0;
@@ -844,26 +851,33 @@ function calcComp(prov){
 
 function recalc(){
   if(!pricing.objects||!competitors.aws)return;
-  var cs=calcCS(),csB=calcCSBurst();
+  var cs=calcCS(),csB=calcCSBurst(),csSmart=calcCSSmart();
   var aws=calcComp(competitors.aws),azure=calcComp(competitors.azure),gcp=calcComp(competitors.gcp);
   var all=[{name:'AWS',tag:'aws',region:competitors.aws.name,total:aws.total,breakdown:aws.breakdown},{name:'Azure',tag:'azure',region:competitors.azure.name,total:azure.total,breakdown:azure.breakdown},{name:'GCP',tag:'gcp',region:competitors.gcp.name,total:gcp.total,breakdown:gcp.breakdown}];
   all.sort(function(a,b){return a.total-b.total});var best=all[0];
-  var stS=$('sectionTotalSub'),stB=$('sectionTotalBurst');if(stS)stS.textContent=fmt(cs.total);if(stB)stB.textContent=fmt(csB.total);
+  var stS=$('sectionTotalSub'),stB=$('sectionTotalBurst'),stC=$('sectionTotalCombined');
+  if(stS)stS.textContent=fmt(csSmart.subTotal);
+  if(stB)stB.textContent=fmt(csSmart.burstTotal);
+  if(stC)stC.textContent=fmt(csSmart.total);
   // Floating total box
   var fb=$('floatBreakdown');
   if(fb){
     var fh='';
-    for(var fk in csB.breakdown){
-      fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.72rem;color:var(--text-secondary);white-space:nowrap">'+fk+'</span><span style="font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap">'+fmt(csB.breakdown[fk])+'</span></div>';
+    for(var fk in csSmart.breakdown){
+      fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.72rem;color:var(--text-secondary);white-space:nowrap">'+fk+'</span><span style="font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap">'+fmt(csSmart.breakdown[fk])+'</span></div>';
     }
-    fh+='<div style="border-top:2px solid var(--cs-green);margin-top:.3rem;padding-top:.4rem;display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.75rem;font-weight:700;color:var(--cs-green)">TOTAL</span><span style="font-size:1.05rem;font-weight:700;color:var(--green)">'+fmt(csB.total)+'</span></div>';
+    fh+='<div style="border-top:1px solid var(--border-color);margin-top:.4rem;padding-top:.3rem">';
+    fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.7rem;color:var(--green)">Subscription</span><span style="font-size:.82rem;font-weight:600;color:var(--green)">'+fmt(csSmart.subTotal)+'</span></div>';
+    fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.7rem;color:var(--orange)">Burst</span><span style="font-size:.82rem;font-weight:600;color:var(--orange)">'+fmt(csSmart.burstTotal)+'</span></div>';
+    fh+='</div>';
+    fh+='<div style="border-top:2px solid var(--cs-green);margin-top:.3rem;padding-top:.4rem;display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.75rem;font-weight:700;color:var(--cs-green)">TOTAL</span><span style="font-size:1.05rem;font-weight:700;color:var(--green)">'+fmt(csSmart.total)+'</span></div>';
     fb.innerHTML=fh;
   }
-  renderBd('csBreakdown',cs.breakdown,cs.total);
-  $('csTotal').textContent=fmt(cs.total);$('csTotal').style.color=cs.total<=best.total?'var(--green)':'var(--cs-green)';
-  renderBd('bestBreakdown',best.breakdown,best.total,cs.total);
-  $('bestTotal').textContent=fmt(best.total)+' ('+best.name+')';$('bestTotal').style.color=best.total<=cs.total?'var(--green)':'var(--red)';
-  var provs=[{name:'CloudSigma',tag:'cloudsigma',region:currentLocation.display_name,total:cs.total}].concat(all);
+  renderBd('csBreakdown',csSmart.breakdown,csSmart.total);
+  $('csTotal').textContent=fmt(csSmart.total);$('csTotal').style.color=csSmart.total<=best.total?'var(--green)':'var(--cs-green)';
+  renderBd('bestBreakdown',best.breakdown,best.total,csSmart.total);
+  $('bestTotal').textContent=fmt(best.total)+' ('+best.name+')';$('bestTotal').style.color=best.total<=csSmart.total?'var(--green)':'var(--red)';
+  var provs=[{name:'CloudSigma',tag:'cloudsigma',region:currentLocation.display_name,total:csSmart.total}].concat(all);
   $('compGrid').innerHTML=provs.map(function(p){var diff=p.total-cs.total;var pct=cs.total>0?Math.round((diff/cs.total)*100):0;var sav='';if(p.tag==='cloudsigma'){sav=cs.total<=best.total?'<div class="comp-savings" style="color:var(--green)">\u2713 Cheapest</div>':'<div class="comp-savings" style="color:var(--orange)">Not cheapest</div>'}else if(diff>0){sav='<div class="comp-savings" style="color:var(--red)">+'+fmt(diff)+' (+'+pct+'%)</div>'}else if(diff<0){sav='<div class="comp-savings" style="color:var(--green)">'+fmt(diff)+' ('+pct+'%)</div>'}else{sav='<div class="comp-savings" style="color:var(--text-secondary)">Same</div>'}return'<div class="comp-card '+p.tag+'"><div class="comp-name">'+p.name+'</div><div class="comp-region">'+p.region+'</div><div class="comp-cost">'+fmt(p.total)+'</div>'+sav+'</div>'}).join('');
 }
 function renderBd(elId,bd,total,cmpT){
