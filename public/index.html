@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>CloudSigma Pricing Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script>
+    (function(){
+      var t=localStorage.getItem('cs-theme')||'dark';
+      document.documentElement.setAttribute('data-theme',t);
+    })();
+  </script>
+  <style>
+    /* CloudSigma Brand Colors */
+    :root{
+      --cs-green:#00A94F;--cs-green-dark:#00853F;--cs-green-light:#44B772;
+      --cs-green-bg:rgba(0,169,79,0.08);--cs-accent-orange:#E0A55A;
+      --cs-secondary-green:#73C167;--cs-light-green:#A8D59D;
+    }
+    /* DARK theme */
+    [data-theme="dark"]{
+      --bg-body:#1a1d23;--bg-surface:#22262e;--bg-card:#282c34;--bg-input:#2d323b;
+      --bg-header:#2d323b;--border-color:#373c46;--text-primary:#e0e4ea;
+      --text-secondary:#9ca3af;--text-heading:#e0e4ea;
+      --table-hover:rgba(0,169,79,0.18);--table-stripe:#252930;
+      --shadow-card:0 1px 3px rgba(0,0,0,0.2);--shadow-card-hover:0 2px 8px rgba(0,0,0,0.3);
+      --green:#44B772;--red:#f87171;--orange:#fb923c;--blue:#60a5fa;
+      --logo-file:url('logo-dark-bg.png');
+    }
+    /* LIGHT theme */
+    [data-theme="light"]{
+      --bg-body:#f7f8f9;--bg-surface:#ffffff;--bg-card:#ffffff;--bg-input:#ffffff;
+      --bg-header:#fafafa;--border-color:#e8e8e8;--text-primary:#4D4D4F;
+      --text-secondary:#77787B;--text-heading:#4D4D4F;
+      --table-hover:#d4f0e0;--table-stripe:#fafbfc;
+      --shadow-card:0 1px 3px rgba(0,0,0,0.06);--shadow-card-hover:0 2px 8px rgba(0,0,0,0.08);
+      --green:#00A94F;--red:#dc2626;--orange:#d97706;--blue:#2563eb;
+      --logo-file:url('logo-white-bg.png');
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:var(--bg-body);color:var(--text-primary);font-family:"Roboto","Helvetica Neue",Arial,sans-serif;line-height:1.6;font-size:14px}
+
+    /* Top accent bar */
+    .top-accent-bar{background:linear-gradient(135deg,#00853F 0%,#00A94F 50%,#0D8C61 100%);height:4px;min-height:4px;box-shadow:0 2px 8px rgba(0,133,63,0.2)}
+
+    .container{max-width:1400px;margin:0 auto;padding:1.5rem 1rem}
+    .header{display:flex;align-items:center;gap:1.25rem;margin-bottom:2rem;flex-wrap:wrap}
+    .header-logo{height:36px;width:auto}
+    .header h1{font-size:1.8rem;font-weight:700;color:var(--text-heading)}
+    .header h1 span{color:var(--cs-green)}
+    .header p{font-size:.95rem;color:var(--text-secondary)}
+    .header-right{margin-left:auto;display:flex;align-items:center;gap:.75rem}
+
+    .card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow-card);transition:box-shadow .2s}
+    .card:hover{box-shadow:var(--shadow-card-hover)}
+    .card h2{font-size:1.05rem;margin-bottom:1rem;color:var(--cs-green);display:flex;align-items:center;gap:.5rem;font-weight:700;padding-bottom:.5rem;border-bottom:2px solid var(--cs-green)}
+    .card h2 .num{background:var(--cs-green);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700}
+
+    .loc-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
+    select,input[type=number]{background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.4rem .5rem;color:var(--text-primary);font-size:.82rem;font-family:inherit}
+    select:focus,input[type=number]:focus{outline:none;border-color:var(--cs-green);box-shadow:0 0 0 2px var(--cs-green-bg)}
+    label{display:block;margin-bottom:.35rem;font-weight:500;font-size:.82rem;color:var(--text-secondary)}
+    .loc-row select{width:100%}
+
+    .btn-add{margin-top:.75rem;background:var(--cs-green-bg);color:var(--cs-green);border:1px solid var(--cs-green);border-radius:6px;padding:.5rem 1.2rem;cursor:pointer;font-weight:600;font-size:.85rem;font-family:inherit}
+    .btn-add:hover{background:rgba(0,169,79,.15)}
+    .btn-rm{background:var(--red);color:white;border:none;border-radius:4px;padding:.2rem .5rem;cursor:pointer;font-size:.7rem}
+    .btn-rm:hover{opacity:.8}
+
+    .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem}
+    .summary-card{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:6px;padding:1.25rem;box-shadow:var(--shadow-card)}
+    .summary-card h3{font-size:1rem;margin-bottom:.75rem;color:var(--cs-green);font-weight:700}
+    .breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--border-color);font-size:.85rem}
+    .breakdown-row:last-child{border:none}
+    .breakdown-row.total{font-weight:700;font-size:.95rem;margin-top:.5rem;padding-top:.75rem;border-top:2px solid var(--cs-green)}
+    .breakdown-row.savings{color:var(--green)}
+    .breakdown-row.loss{color:var(--red)}
+    .total-box{text-align:center;margin-top:1rem}
+    .total-box .lbl{font-size:.8rem;color:var(--text-secondary)}
+    .total-box .amt{font-size:2rem;font-weight:700}
+
+    .comp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+    .comp-card{border:1px solid var(--border-color);border-radius:6px;padding:1rem;box-shadow:var(--shadow-card)}
+    .comp-card.cloudsigma{border-color:var(--cs-green);background:var(--cs-green-bg)}
+    .comp-card.aws{border-color:#ff9900;background:rgba(255,153,0,.08)}
+    .comp-card.azure{border-color:#00a4ef;background:rgba(0,164,239,.08)}
+    .comp-card.gcp{border-color:#34a853;background:rgba(52,168,83,.08)}
+    .comp-name{font-size:.9rem;font-weight:600;margin-bottom:.25rem}
+    .comp-region{font-size:.75rem;color:var(--text-secondary);margin-bottom:.5rem}
+    .comp-cost{font-size:1.4rem;font-weight:700}
+    .comp-savings{font-size:.8rem;margin-top:.25rem}
+
+    .admin-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.75rem;align-items:end}
+    .admin-grid select,.admin-grid input{width:100%}
+    .btn-primary{background:var(--cs-green);color:#fff;font-weight:600;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.85rem;font-family:inherit}
+    .btn-primary:hover{background:var(--cs-green-dark)}
+    .btn-danger{background:var(--red);color:white;font-weight:600;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.85rem;font-family:inherit}
+
+    /* Resource layout */
+    .resource-section{display:flex;flex-direction:column;gap:1.25rem}
+    .resource-group{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:6px;padding:1.25rem;box-shadow:var(--shadow-card)}
+    .section-header h3{color:var(--cs-green);margin:0;font-size:.95rem;font-weight:700}
+    .vm-block{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:6px;padding:1rem;margin-bottom:1rem;box-shadow:var(--shadow-card)}
+    .vm-block-header{display:flex;align-items:center;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border-color)}
+    .vm-row{display:flex;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--table-stripe)}
+    .vm-row:last-child{border:none}
+    .vm-row-disabled{opacity:.35;pointer-events:none}
+    .vm-row-label{flex:0 0 150px;font-size:.82rem;font-weight:500;color:var(--text-secondary);display:flex;align-items:center;gap:.35rem}
+    .vm-row-input{flex:1;margin-right:.5rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .vm-row-input input[type=number]{width:70px}
+    .vm-row-input select{width:auto}
+    .vm-row-unit{font-size:.72rem;color:var(--text-secondary)}
+    .vm-row-prices{flex:0 0 200px;display:flex;gap:4px;text-align:right;font-size:.8rem;font-variant-numeric:tabular-nums}
+    .vm-row-price-sub{flex:1;color:var(--green);font-weight:600}
+    .vm-row-price-burst{flex:1;color:var(--orange);font-weight:600}
+    .vm-row-free{font-size:.62rem;color:var(--blue);white-space:nowrap;background:rgba(96,165,250,.1);padding:.1rem .3rem;border-radius:3px}
+
+    .info-bubble{position:relative;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(0,169,79,.12);color:var(--cs-green);font-size:.55rem;font-weight:700;cursor:help;flex-shrink:0}
+    .info-bubble:hover{background:rgba(0,169,79,.25)}
+    .info-bubble .tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;padding:.5rem .65rem;font-size:.72rem;font-weight:400;color:var(--text-primary);white-space:normal;width:230px;z-index:100;line-height:1.4;box-shadow:var(--shadow-card-hover)}
+    .info-bubble:hover .tip{display:block}
+    .info-bubble .tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border-color)}
+
+    .price-col-headers{display:flex;justify-content:flex-end;gap:4px;margin-bottom:.5rem}
+    .price-col-hdr{flex:0 0 100px;text-align:right;font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+    .price-col-hdr.sub{color:var(--green)}
+    .price-col-hdr.burst{color:var(--orange)}
+
+    .section-total{display:flex;justify-content:flex-end;align-items:center;gap:1rem;padding:.75rem 0;margin-top:.75rem;border-top:2px solid var(--cs-green)}
+    .section-total-label{font-size:.9rem;font-weight:600;color:var(--text-heading)}
+    .section-total-values{display:flex;gap:4px;flex:0 0 200px}
+    .section-total-sub{flex:1;text-align:right;font-size:1.15rem;font-weight:700;color:var(--green)}
+    .section-total-burst{flex:1;text-align:right;font-size:1.15rem;font-weight:700;color:var(--orange)}
+
+    .btn-disk-add{background:var(--cs-green-bg);color:var(--cs-green);border:1px solid var(--cs-green);border-radius:4px;padding:.25rem .6rem;font-size:.75rem;cursor:pointer;font-weight:600}
+    .btn-disk-add:hover{background:rgba(0,169,79,.15)}
+    .btn-disk-rm{background:var(--red);color:white;border:none;border-radius:4px;padding:.15rem .4rem;font-size:.7rem;cursor:pointer}
+
+    .btn-export{background:linear-gradient(135deg,#00853F,#00A94F);color:#fff;font-weight:700;padding:.5rem 1.2rem;border-radius:6px;border:none;cursor:pointer;font-size:.82rem;font-family:inherit}
+    .btn-export:hover{opacity:.9}
+
+    /* Theme toggle */
+    .theme-toggle{background:var(--bg-input);border:1px solid var(--border-color);border-radius:20px;padding:3px;display:inline-flex;gap:2px}
+    .theme-toggle button{border:none;background:transparent;color:var(--text-secondary);padding:4px 10px;border-radius:16px;font-size:.75rem;cursor:pointer;font-family:inherit;transition:all .15s}
+    .theme-toggle button:hover{color:var(--text-primary);background:var(--bg-header)}
+    .theme-toggle button.active{background:var(--cs-green);color:#fff;font-weight:500}
+
+    /* Resource price table */
+    .res-price-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:.5rem}
+    .res-price-table th{padding:.35rem .5rem;text-align:left;font-weight:600;border-bottom:2px solid var(--border-color);color:var(--text-secondary);font-size:.7rem;text-transform:uppercase}
+    .res-price-table td{padding:.3rem .5rem;border-bottom:1px solid var(--border-color)}
+    .res-price-table tr:hover{background:var(--table-hover)}
+
+    @media(max-width:768px){
+      .loc-row,.admin-grid{grid-template-columns:1fr}
+      .comp-grid{grid-template-columns:1fr 1fr}
+      .vm-row-label{flex:0 0 100px}
+      .vm-row-prices{flex:0 0 150px}
+      .header{flex-direction:column;text-align:center}
+      .header-right{margin-left:0}
+      #floatingTotal{display:none !important}
+    }
+  </style>
+</head>
+<body>
+<div class="top-accent-bar"></div>
+<div class="container">
+  <header class="header">
+    <img src="logo-dark-bg.png" alt="CloudSigma" class="header-logo" id="headerLogo">
+    <div>
+      <h1>Pricing <span>Calculator</span></h1>
+      <p>Compare cloud costs across CloudSigma, AWS, Azure &amp; GCP in real time.</p>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle" id="themeToggle">
+        <button data-theme="light" title="Light theme">☀️</button>
+        <button data-theme="dark" class="active" title="Dark theme">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 1. Select Cloud Location -->
+  <section class="card">
+    <h2 onclick="toggleSection('loc')" style="cursor:pointer;user-select:none"><span id="section-arrow-loc" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)">▶</span><span class="num">1</span> Select Cloud Location</h2>
+    <div id="section-body-loc" style="display:none">
+    <div class="loc-row">
+      <div><label>Location</label><select id="locationSelect"></select></div>
+      <div><label>Display Currency</label><select id="currencySelect"><option value="USD">USD (US Dollar)</option></select></div>
+      <div><label>&nbsp;</label><div id="currencyInfo" style="padding-top:.3rem;font-size:.82rem;color:var(--text-secondary)">—</div></div>
+    </div>
+    <div id="resourcePriceTable"></div>
+    </div>
+  </section>
+
+  <!-- 2. Configure Resources -->
+  <section class="card">
+    <h2 style="cursor:pointer;user-select:none"><span id="section-arrow-cfg" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)" onclick="toggleSection('cfg')">▶</span><span onclick="toggleSection('cfg')"><span class="num">2</span> Configure Resources</span>
+
+    </h2>
+    <div id="section-body-cfg" style="display:none">
+    <div class="price-col-headers" style="max-width:200px;margin-left:auto">
+      <div class="price-col-hdr sub">📗 Subscription</div>
+      <div class="price-col-hdr burst">📙 Burst</div>
+    </div>
+    <div class="resource-section">
+      <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('vm')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-vm" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>🖥️ Virtual Machines</h3>
+        </div>
+        <div id="section-body-vm" style="margin-top:1rem;display:none"><div id="panel-vm"></div></div>
+      </div>
+      <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('obj')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-obj" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>🗄️ Object Storage</h3>
+        </div>
+        <div id="section-body-obj" style="margin-top:1rem;display:none"><div id="panel-objstorage"></div></div>
+      </div>
+      <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('net')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-net" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>🌐 Network</h3>
+        </div>
+        <div id="section-body-net" style="margin-top:1rem;display:none"><div id="panel-network"></div></div>
+      </div>
+      <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('paas')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-paas" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>☁️ PaaS</h3>
+        </div>
+        <div id="section-body-paas" style="margin-top:1rem;display:none"><div id="panel-paas"></div></div>
+      </div>
+      <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('of')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-of" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>🗄️ Omnifabric</h3>
+        </div>
+        <div id="section-body-of" style="margin-top:1rem;display:none"><div id="ofPanel"></div></div>
+      </div>
+      <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('taas')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-taas" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>🤖 TaaS (AI Models)</h3>
+        </div>
+        <div id="section-body-taas" style="margin-top:1rem;display:none"><div id="panel-taas"></div></div>
+      </div>
+    </div>
+    <div class="section-total">
+      <div class="section-total-label">Monthly Total</div>
+      <div class="section-total-values">
+        <div class="section-total-sub" id="sectionTotalSub">$0.00</div>
+        <div class="section-total-burst" id="sectionTotalBurst">$0.00</div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- 3. Summary -->
+  <section class="card">
+    <h2 onclick="toggleSection('sum')" style="cursor:pointer;user-select:none"><span id="section-arrow-sum" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)">▶</span><span class="num">3</span> Summary &amp; Price Breakdown</h2>
+    <div id="section-body-sum" style="display:none">
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h3>☁️ CloudSigma (Subscription)</h3>
+        <div id="csBreakdown"></div>
+        <div class="total-box"><div class="lbl">Monthly Total</div><div class="amt" id="csTotal">$0.00</div></div>
+      </div>
+      <div class="summary-card">
+        <h3>🏆 Best Alternative</h3>
+        <div id="bestBreakdown"></div>
+        <div class="total-box"><div class="lbl">Monthly Total</div><div class="amt" id="bestTotal">$0.00</div></div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- 4. Comparison -->
+  <section class="card">
+    <h2 onclick="toggleSection('cmp')" style="cursor:pointer;user-select:none"><span id="section-arrow-cmp" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)">▶</span><span class="num">4</span> Provider Comparison</h2>
+    <div id="section-body-cmp" style="display:none">
+    <div class="comp-grid" id="compGrid"></div>
+    </div>
+  </section>
+
+
+
+  <!-- Floating Total Box -->
+  <div id="floatingTotal" style="position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:190px;font-family:Roboto,sans-serif">
+    <div style="font-size:.7rem;font-weight:700;color:var(--cs-green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem">💰 Monthly Quote</div>
+    <div id="floatBreakdown" style="display:flex;flex-direction:column;gap:.3rem"></div>
+    <button class="btn-export" onclick="exportPDF()" style="width:100%;margin-top:.8rem;font-size:.78rem;padding:.45rem 0">📄 Export Quote</button>
+  </div>
+
+  <footer style="text-align:center;padding:2rem 0;color:var(--text-secondary);font-size:.85rem">
+    Prices updated in real-time &bull; Powered by CloudSigma API &bull; All comparisons in USD
+  </footer>
+</div>
+<script>
+// Theme toggle
+(function(){
+  var t=localStorage.getItem('cs-theme')||'dark';
+  document.querySelectorAll('.theme-toggle button').forEach(function(btn){
+    btn.classList.toggle('active',btn.dataset.theme===t);
+  });
+  document.getElementById('themeToggle').addEventListener('click',function(e){
+    var btn=e.target.closest('button');if(!btn)return;
+    var theme=btn.dataset.theme;
+    localStorage.setItem('cs-theme',theme);
+    document.documentElement.setAttribute('data-theme',theme);
+    document.querySelectorAll('.theme-toggle button').forEach(function(b){b.classList.toggle('active',b.dataset.theme===theme);});
+    // Swap logo
+    document.getElementById('headerLogo').src=theme==='dark'?'logo-dark-bg.png':'logo-white-bg.png';
+  });
+})();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

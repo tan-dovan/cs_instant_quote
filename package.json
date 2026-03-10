@@ -1,0 +1,15 @@
+{
+  "name": "cloudsigma-pricing-calculator",
+  "version": "1.0.0",
+  "description": "CloudSigma Dynamic Pricing Calculator with AWS/Azure/GCP comparison",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.7.0"
+  }
+}
