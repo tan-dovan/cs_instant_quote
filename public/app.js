@@ -1476,6 +1476,36 @@ async function loadQuote(id){
       buildOfPanel();
     }
 
+    // Restore TaaS
+    if(q.taas&&q.taas.items&&q.taas.items.length>0){
+      // Ensure TaaS models are loaded and panel is built
+      if(!taasModels.length){
+        await loadTaasModels();
+        buildTaasPanel();
+      }
+      // TaaS panel may still be rendering — wait for inputs to appear
+      var taasRetries=0;
+      var restoreTaasValues=function(){
+        var tel=$('panel-taas');
+        if((!tel||!tel.querySelectorAll('.taas-usage').length)&&taasRetries<20){
+          taasRetries++;
+          setTimeout(restoreTaasValues,300);
+          return;
+        }
+        if(!tel)return;
+        q.taas.items.forEach(function(item){
+          tel.querySelectorAll('.taas-usage').forEach(function(inp){
+            if(inp.dataset.model===item.model){
+              inp.value=item.mtokPerMo||0;
+            }
+          });
+        });
+        if(typeof updateTaas==='function')updateTaas();
+        recalc();
+      };
+      restoreTaasValues();
+    }
+
     // Trigger recalculation
     recalc();
 
