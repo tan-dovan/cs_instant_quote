@@ -290,6 +290,54 @@ function toggleSection(key){
 }
 window.toggleSection=toggleSection;
 
+/* ── Breakdown key → section mapping ── */
+var BREAKDOWN_SECTION={
+  '\u26A1 Compute & Storage':'vm','\uD83D\uDCBE Backup':'vm',
+  '\uD83C\uDF10 IPs':'vm','\uD83D\uDE80 GPU':'vm',
+  '\uD83E\uDE9F Microsoft Licenses':'vm',
+  '\uD83D\uDDC4\uFE0F Object Storage':'obj','\uD83C\uDF10 Network':'net',
+  '\u2601\uFE0F PaaS':'paas','\uD83D\uDDC4\uFE0F Omnifabric':'of','\uD83E\uDD16 TaaS':'taas'
+};
+function scrollToSection(key){
+  if(collapsed[key])toggleSection(key);
+  var el=$('section-body-'+key);
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+window.scrollToSection=scrollToSection;
+
+/* ── Clear a resource group ── */
+function clearResourceGroup(bdKey){
+  var sec=BREAKDOWN_SECTION[bdKey];
+  if(!sec)return;
+  if(sec==='vm'){
+    vmLines=[{id:1,qty:1,name:'VM 1',cpu:0,cpuSpeed:2,ram:0,cpuType:'intel',hypervisor:'kvm',disks:[{type:'dssd',size:0}],localDisk:0,backup:0,gpu:0,gpuType:'gpu_nvidia_a100',ip:0,winOs:'',winOsQty:0,sqlLic:'',sqlLicQty:0,rdsQty:0}];
+    nextVmId=2;renderVmTable();
+  }else if(sec==='obj'){
+    ['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){var s=$('sl_'+k);if(s)s.value=0;});
+    buildObjPanel();
+  }else if(sec==='net'){
+    var sl=$('sl_tx');if(sl)sl.value=0;
+    var qt=$('qty_tx');if(qt)qt.value=1;
+    var bw=$('sl_bandwidth');if(bw)bw.value='';
+    var vl=$('sl_vlan');if(vl)vl.value=0;
+  }else if(sec==='paas'){
+    ['paas_dyn_cld','paas_sta_cld','paas_storage','paas_traffic'].forEach(function(id){var e=$(id);if(e)e.value=0;});
+  }else if(sec==='of'){
+    ofInstances=[];buildOfPanel();
+  }else if(sec==='taas'){
+    var tel=$('panel-taas');
+    if(tel)tel.querySelectorAll('.taas-usage').forEach(function(inp){inp.value=0;});
+    if(typeof updateTaas==='function')updateTaas();
+  }
+  recalc();
+}
+window.clearResourceGroup=clearResourceGroup;
+function confirmClearGroup(el){
+  var key=el.getAttribute('data-key');
+  if(key&&confirm('Remove '+key+'?'))clearResourceGroup(key);
+}
+window.confirmClearGroup=confirmClearGroup;
+
 /* ────── VM ────── */
 function renderVmTable(){
   var p=$('panel-vm');
@@ -873,7 +921,12 @@ function recalc(){
   if(fb){
     var fh='';
     for(var fk in csSmart.breakdown){
-      fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.72rem;color:var(--text-secondary);white-space:nowrap">'+fk+'</span><span style="font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap">'+fmt(csSmart.breakdown[fk])+'</span></div>';
+      var secKey=BREAKDOWN_SECTION[fk]||'';
+      fh+='<div style="display:flex;align-items:center;gap:.3rem;margin-bottom:.15rem">';
+      fh+='<span onclick="scrollToSection(\''+secKey+'\')" style="font-size:.72rem;color:var(--cs-green);white-space:nowrap;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;flex:1" title="Edit '+fk+'">'+fk+'</span>';
+      fh+='<span style="font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap">'+fmt(csSmart.breakdown[fk])+'</span>';
+      fh+='<span onclick="confirmClearGroup(this)" data-key="'+fk.replace(/"/g,'&quot;')+'" style="cursor:pointer;font-size:.65rem;color:var(--red,#e74c3c);margin-left:.15rem;opacity:.6;line-height:1" title="Remove">\u2716</span>';
+      fh+='</div>';
     }
     fh+='<div style="border-top:1px solid var(--border-color);margin-top:.4rem;padding-top:.3rem">';
     fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.7rem;color:var(--green)">Subscription</span><span style="font-size:.82rem;font-weight:600;color:var(--green)">'+fmt(csSmart.subTotal)+'</span></div>';
@@ -1278,13 +1331,16 @@ async function loadQuoteList(){
       var date=q.savedAt?new Date(q.savedAt).toLocaleDateString()+' '+new Date(q.savedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—';
       var custName=q.customer||'(no customer)';
       var idShort=q.opportunityId?q.opportunityId.substring(0,8)+'...':'—';
-      h+='<div onclick="loadQuote(\''+q.opportunityId+'\')" style="padding:.45rem .6rem;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'var(--border-color)\'" onmouseout="this.style.background=\'transparent\'">';
+      h+='<div style="padding:.45rem .6rem;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:.4rem">';
+      h+='<div onclick="loadQuote(\''+q.opportunityId+'\')" style="flex:1;cursor:pointer" onmouseover="this.style.opacity=\'0.8\'" onmouseout="this.style.opacity=\'1\'">';
       h+='<div style="font-size:.78rem;font-weight:600;color:var(--text-primary)">'+custName.replace(/</g,'&lt;')+'</div>';
       h+='<div style="font-size:.65rem;color:var(--text-secondary);display:flex;justify-content:space-between;margin-top:.15rem">';
       h+='<span style="font-family:monospace">'+idShort+'</span>';
       h+='<span>'+date+'</span>';
       h+='</div>';
       if(q.opportunityName)h+='<div style="font-size:.65rem;color:var(--cs-green);margin-top:.1rem">'+q.opportunityName.replace(/</g,'&lt;')+'</div>';
+      h+='</div>';
+      h+='<button onclick="deleteQuote(\''+q.opportunityId+'\')" title="Delete quote" style="background:none;border:1px solid var(--red,#e74c3c);color:var(--red,#e74c3c);border-radius:4px;cursor:pointer;font-size:.65rem;padding:.2rem .35rem;white-space:nowrap;flex-shrink:0">\uD83D\uDDD1</button>';
       h+='</div>';
     });
     panel.innerHTML=h;
@@ -1293,6 +1349,30 @@ async function loadQuoteList(){
   }
 }
 window.loadQuoteList=loadQuoteList;
+
+/* ────── Delete a quote ────── */
+async function deleteQuote(id){
+  var shortId=id.substring(0,8)+'...';
+  if(!confirm('Delete quote '+shortId+'?\nThis cannot be undone.'))return;
+  var statusEl=$('saveStatus');
+  try{
+    var res=await fetch('/api/quotes/'+encodeURIComponent(id),{method:'DELETE'});
+    var result=await res.json();
+    if(res.ok){
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">\u2713 Deleted '+shortId+'</span>';
+      // Refresh the list
+      var panel=$('quoteListPanel');
+      if(panel)panel.style.display='none';
+      loadQuoteList();
+    }else{
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 '+(result.error||'Delete failed')+'</span>';
+    }
+  }catch(e){
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 Network error</span>';
+  }
+  setTimeout(function(){if(statusEl)statusEl.innerHTML='';},4000);
+}
+window.deleteQuote=deleteQuote;
 
 /* ────── Load a single quote and populate the form ────── */
 async function loadQuote(id){
