@@ -238,16 +238,29 @@ app.post('/api/quotes', (req, res) => {
 
 // Get all quotes (list)
 app.get('/api/quotes', (req, res) => {
-  const list = Object.values(quotesDB).map(q => ({
-    opportunityId: q.opportunityId,
-    customer: q.customer || '',
-    opportunityName: q.opportunityName || '',
-    location: q.location || '',
-    currency: q.currency || '',
-    grandTotalMonthly: q.totals ? q.totals.grandTotalMonthly : 0,
-    savedAt: q.savedAt,
-    createdAt: q.createdAt
-  }));
+  const list = Object.values(quotesDB).map(q => {
+    // Build resource summary
+    const vmCount = (q.virtualMachines || []).length;
+    const totalVMs = (q.virtualMachines || []).reduce((s, vm) => s + (vm.qty || 1), 0);
+    return {
+      opportunityId: q.opportunityId,
+      customer: q.customer || '',
+      opportunityName: q.opportunityName || '',
+      location: q.location || '',
+      currency: q.currency || '',
+      grandTotalMonthly: q.totals ? q.totals.grandTotalMonthly : 0,
+      resourceSummary: {
+        vmConfigs: vmCount,
+        totalVMs: totalVMs,
+        hasPaas: q.paas && q.paas.total > 0,
+        hasOmnifabric: q.omnifabric && q.omnifabric.total > 0,
+        hasTaas: q.taas && q.taas.total > 0
+      },
+      savedAt: q.savedAt,
+      createdAt: q.createdAt,
+      updatedAt: q.updatedAt || null
+    };
+  });
   list.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
   res.json({ quotes: list, total: list.length });
 });
