@@ -916,6 +916,11 @@ function recalc(){
   if(stS)stS.textContent=fmt(csSmart.subTotal);
   if(stB)stB.textContent=fmt(csSmart.burstTotal);
   if(stC)stC.textContent=fmt(csSmart.total);
+  // Floating location info
+  var fli=$('floatLocationInfo');
+  if(fli&&currentLocation){
+    fli.innerHTML='📍 '+currentLocation.display_name+' &bull; '+displayCurrency;
+  }
   // Floating total box
   var fb=$('floatBreakdown');
   if(fb){
@@ -1073,6 +1078,7 @@ function collectQuoteData(){
     opportunityName:opportunity,
     notes:notes,
     location:currentLocation.display_name,
+    locationHost:$('locationSelect')?$('locationSelect').value:'',
     currency:curLabel,
     generatedAt:new Date().toISOString(),
     virtualMachines:vmData,
@@ -1384,6 +1390,20 @@ async function loadQuote(id){
     var res=await fetch('/api/quotes/'+encodeURIComponent(id));
     var q=await res.json();
     if(!res.ok){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 '+(q.error||'Not found')+'</span>';return;}
+
+    // Restore location and currency first (triggers pricing reload)
+    if(q.locationHost&&$('locationSelect')){
+      $('locationSelect').value=q.locationHost;
+      await onLocationChange();
+    }
+    if(q.currency&&$('currencySelect')){
+      var csel=$('currencySelect');
+      // Check if currency option exists, if so select it
+      for(var i=0;i<csel.options.length;i++){
+        if(csel.options[i].value===q.currency){csel.value=q.currency;break;}
+      }
+      displayCurrency=csel.value;
+    }
 
     // Restore opportunity ID
     opportunityId=q.opportunityId||opportunityId;
