@@ -207,6 +207,67 @@ app.get('/api/competitors', (req, res) => {
   res.json(COMPETITOR_REGIONS);
 });
 
+// ─── Quotes DB (JSON file) ───────────────────────────────────────────────
+const QUOTES_FILE = path.join(__dirname, 'quotes.json');
+let quotesDB = {};
+try { quotesDB = JSON.parse(fs.readFileSync(QUOTES_FILE, 'utf8')); } catch(e) {}
+
+function saveQuotesDB() {
+  fs.writeFileSync(QUOTES_FILE, JSON.stringify(quotesDB, null, 2));
+}
+
+// Save a quote (upsert by opportunityId)
+app.post('/api/quotes', (req, res) => {
+  const data = req.body;
+  if (!data || !data.opportunityId) {
+    return res.status(400).json({ error: 'opportunityId is required' });
+  }
+  const id = data.opportunityId;
+  const isUpdate = !!quotesDB[id];
+  data.savedAt = new Date().toISOString();
+  if (isUpdate) {
+    data.updatedAt = data.savedAt;
+    data.createdAt = quotesDB[id].createdAt || data.savedAt;
+  } else {
+    data.createdAt = data.savedAt;
+  }
+  quotesDB[id] = data;
+  saveQuotesDB();
+  res.json({ success: true, opportunityId: id, action: isUpdate ? 'updated' : 'created' });
+});
+
+// Get all quotes (list)
+app.get('/api/quotes', (req, res) => {
+  const list = Object.values(quotesDB).map(q => ({
+    opportunityId: q.opportunityId,
+    customer: q.customer || '',
+    opportunityName: q.opportunityName || '',
+    location: q.location || '',
+    currency: q.currency || '',
+    grandTotalMonthly: q.totals ? q.totals.grandTotalMonthly : 0,
+    savedAt: q.savedAt,
+    createdAt: q.createdAt
+  }));
+  list.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+  res.json({ quotes: list, total: list.length });
+});
+
+// Get a single quote by opportunityId
+app.get('/api/quotes/:id', (req, res) => {
+  const q = quotesDB[req.params.id];
+  if (!q) return res.status(404).json({ error: 'Quote not found' });
+  res.json(q);
+});
+
+// Delete a quote
+app.delete('/api/quotes/:id', (req, res) => {
+  const id = req.params.id;
+  if (!quotesDB[id]) return res.status(404).json({ error: 'Quote not found' });
+  delete quotesDB[id];
+  saveQuotesDB();
+  res.json({ success: true, deleted: id });
+});
+
 // ─── SPA fallback ───────────────────────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
