@@ -1126,7 +1126,7 @@ function exportPDF(){
   html+='.notes-box h3{margin:0 0 8px;color:#92400e;font-size:14px}';
   html+='.notes-box p{margin:0;white-space:pre-wrap;font-size:13px;color:#78350f}';
   html+='</style></head><body>';
-  html+='<h1>CloudSigma Pricing Quote</h1>';
+  html+='<h1>Instant Quoting Tool (IQT)</h1>';
   html+='<p class="muted">Location: '+currentLocation.display_name+' &bull; Currency: '+curLabel+' &bull; Generated: '+new Date().toLocaleDateString()+'</p>';
 
   // Customer & Opportunity info box
