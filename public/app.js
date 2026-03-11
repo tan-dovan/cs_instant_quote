@@ -100,6 +100,7 @@ function diskTypesForVm(vm){return vm.hypervisor==='vmware'?VMW_DISK_TYPES:KVM_D
 function infoBubble(k){var t=RES_INFO[k]||'';if(!t)return'';return'<span class="info-bubble">i<span class="tip">'+t+'</span></span>';}
 function freeTag(r){if(!pricing.objects)return'';var bl=burstLevels[r];if(bl===0)return' <span class="vm-row-free">FREE burst</span>';return'';}
 function priceCell(s,b,idS,idB){return'<div class="vm-row-prices"><div class="vm-row-price-sub" id="'+idS+'">'+fmt(s)+'</div><div class="vm-row-price-burst" id="'+idB+'">'+fmt(b)+'</div></div>';}
+function burstOnlyCell(b,idB){return'<div class="vm-row-prices"><div class="vm-row-price-sub" style="color:var(--text-secondary);">\u2014</div><div class="vm-row-price-burst" id="'+idB+'">'+fmt(b)+'</div></div>';}
 
 /* ── Init ── */
 async function init(){
@@ -562,7 +563,7 @@ function calcOmnifabric(){
 function buildOfPanel(){
   var el=$('ofPanel');if(!el)return;
   var h='';
-  h+='<table class="res-price-table"><thead><tr><th>Instance</th><th>Spec</th><th>Qty</th><th>Storage (GB)</th><th>Monthly</th><th></th></tr></thead><tbody>';
+  h+='<table class="res-price-table"><thead><tr><th>Instance</th><th>Spec</th><th>Qty</th><th>Storage (GB)</th><th style="color:var(--orange)">Burst/mo</th><th></th></tr></thead><tbody>';
   ofInstances.forEach(function(inst,idx){
     var spec=OF_PRICE.compute[inst.spec]||OF_PRICE.compute[0];
     var mo=spec.priceHr*730*inst.qty + inst.storageGB*OF_PRICE.storagePerGBmo;
@@ -575,14 +576,14 @@ function buildOfPanel(){
     h+='<td><select onchange="ofInstances['+idx+'].spec=+this.value;buildOfPanel()" style="width:100%;padding:.25rem">'+opts+'</select></td>';
     h+='<td><input type="number" min="1" value="'+inst.qty+'" onchange="ofInstances['+idx+'].qty=+this.value||1;buildOfPanel()" style="width:60px"></td>';
     h+='<td><input type="number" min="0" value="'+inst.storageGB+'" onchange="ofInstances['+idx+'].storageGB=+this.value||0;buildOfPanel()" style="width:80px"></td>';
-    h+='<td style="font-weight:600">'+fmt(mo)+'</td>';
+    h+='<td style="font-weight:600;color:var(--orange)">'+fmt(mo)+'</td>';
     h+='<td><button onclick="removeOfInstance('+inst.id+')" style="background:none;border:none;color:var(--red,#e74c3c);cursor:pointer;font-size:1rem">\u2716</button></td>';
     h+='</tr>';
   });
   h+='</tbody></table>';
   h+='<button onclick="addOfInstance()" style="margin-top:.5rem;padding:.3rem .8rem;font-size:.78rem;background:var(--cs-green);color:#fff;border:none;border-radius:4px;cursor:pointer">+ Add Instance</button>';
   var total=calcOmnifabric();
-  h+='<div style="text-align:right;margin-top:.5rem;font-size:.9rem;font-weight:700;color:var(--cs-green)">Omnifabric Total: '+fmt(total)+'/mo</div>';
+  h+='<div style="text-align:right;margin-top:.5rem;font-size:.9rem;font-weight:700;color:var(--orange)">Omnifabric Total (Burst): '+fmt(total)+'/mo</div>';
   el.innerHTML=h;
   recalc();
 }
@@ -592,25 +593,25 @@ function buildPaasPanel(){
   var h='';
   h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">1 cloudlet = 128 MB RAM + 400 MHz CPU</div>';
 
-  // Dynamic cloudlets (auto-scaling)
+  // Dynamic cloudlets (auto-scaling) — burst only
   h+='<div class="vm-row"><div class="vm-row-label">Dynamic Cloudlets '+infoBubble('paas_dyn')+'</div>';
   h+='<div class="vm-row-input"><input type="number" id="paas_dyn_cld" min="0" max="256" value="0"> <span class="vm-row-unit">cloudlets</span></div>';
-  h+=priceCell(0,0,'ps_paas_dyn','pb_paas_dyn')+'</div>';
+  h+=burstOnlyCell(0,'pb_paas_dyn')+'</div>';
 
-  // Static cloudlets (reserved)
+  // Static cloudlets (reserved) — burst only
   h+='<div class="vm-row"><div class="vm-row-label">Static Cloudlets '+infoBubble('paas_sta')+'</div>';
   h+='<div class="vm-row-input"><input type="number" id="paas_sta_cld" min="0" max="256" value="0"> <span class="vm-row-unit">cloudlets</span></div>';
-  h+=priceCell(0,0,'ps_paas_sta','pb_paas_sta')+'</div>';
+  h+=burstOnlyCell(0,'pb_paas_sta')+'</div>';
 
-  // Storage
+  // Storage — burst only
   h+='<div class="vm-row"><div class="vm-row-label">Storage '+infoBubble('paas_sto')+'</div>';
   h+='<div class="vm-row-input"><input type="number" id="paas_storage" min="0" max="10000" step="10" value="0"> <span class="vm-row-unit">GB</span></div>';
-  h+=priceCell(0,0,'ps_paas_sto','pb_paas_sto')+'</div>';
+  h+=burstOnlyCell(0,'pb_paas_sto')+'</div>';
 
-  // Traffic
+  // Traffic — burst only
   h+='<div class="vm-row"><div class="vm-row-label">External Traffic '+infoBubble('paas_tx')+'</div>';
   h+='<div class="vm-row-input"><input type="number" id="paas_traffic" min="0" max="100000" step="100" value="0"> <span class="vm-row-unit">GB/mo</span></div>';
-  h+=priceCell(0,0,'ps_paas_tx','pb_paas_tx')+'</div>';
+  h+=burstOnlyCell(0,'pb_paas_tx')+'</div>';
 
   // Summary line: total RAM & CPU from cloudlets
   h+='<div id="paas_summary" style="margin-top:.5rem;font-size:.75rem;color:var(--text-secondary)"></div>';
@@ -629,10 +630,10 @@ function buildPaasPanel(){
     var txMo=txGB*PAAS_PRICE.trafficPerGB;
 
     function s(id,v){var e=$(id);if(e)e.textContent=fmt(v);}
-    s('ps_paas_dyn',dynMo);s('pb_paas_dyn',dynMo);
-    s('ps_paas_sta',staMo);s('pb_paas_sta',staMo);
-    s('ps_paas_sto',stoMo);s('pb_paas_sto',stoMo);
-    s('ps_paas_tx',txMo);s('pb_paas_tx',txMo);
+    s('pb_paas_dyn',dynMo);
+    s('pb_paas_sta',staMo);
+    s('pb_paas_sto',stoMo);
+    s('pb_paas_tx',txMo);
 
     // Summary
     var totalC=dynC+staC;
@@ -721,10 +722,10 @@ function buildTaasPanel(){
   var sortedTypes=typeOrder.filter(function(t){return groups[t];});
   Object.keys(groups).forEach(function(t){if(sortedTypes.indexOf(t)===-1)sortedTypes.push(t);});
 
-  var h='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">AI model pricing per million tokens (input/output). Select models and estimate monthly usage.</div>';
+  var h='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">AI model pricing per million tokens (input/output). Select models and estimate monthly usage. <span style="color:var(--orange);font-weight:600">Burst pricing only.</span></div>';
 
   // Model selector table
-  h+='<table class="res-price-table"><thead><tr><th>Model</th><th>Supplier</th><th>Input</th><th>Output</th><th style="width:120px">M tokens/mo</th><th style="width:90px">Monthly</th></tr></thead><tbody>';
+  h+='<table class="res-price-table"><thead><tr><th>Model</th><th>Supplier</th><th>Input</th><th>Output</th><th style="width:120px">M tokens/mo</th><th style="width:90px;color:var(--orange)">Burst/mo</th></tr></thead><tbody>';
 
   sortedTypes.forEach(function(type){
     var label=TAAS_TYPE_LABELS[type]||type;
@@ -748,7 +749,7 @@ function buildTaasPanel(){
       h+='<td style="font-size:.78rem;color:'+(hasPricing?'var(--green)':'var(--cs-green)')+'">' +inp+'</td>';
       h+='<td style="font-size:.78rem;color:'+(hasPricing?'var(--orange)':'var(--cs-green)')+'">' +out+'</td>';
       h+='<td><input type="number" class="taas-usage" data-model="'+m.id+'" data-input="'+(p.input||0)+'" data-output="'+(p.output||0)+'" min="0" step="0.1" value="0" style="width:100%"></td>';
-      h+='<td class="taas-cost" id="taas_cost_'+m.id.replace(/[^a-zA-Z0-9]/g,'_')+'" style="font-size:.78rem;font-weight:600">$0.00</td>';
+      h+='<td class="taas-cost" id="taas_cost_'+m.id.replace(/[^a-zA-Z0-9]/g,'_')+'" style="font-size:.78rem;font-weight:600;color:var(--orange)">$0.00</td>';
       h+='</tr>';
     });
   });
@@ -902,23 +903,166 @@ function renderBd(elId,bd,total,cmpT){
   el.innerHTML=h;
 }
 
+/* ────── Helper: collect full quote data ────── */
+function collectQuoteData(){
+  var cs=calcCS(),csB=calcCSBurst(),csSmart=calcCSSmart();
+  var customer=($('quoteCustomer')||{}).value||'';
+  var opportunity=($('quoteOpportunity')||{}).value||'';
+  var notes=($('quoteNotes')||{}).value||'';
+  var curLabel=displayCurrency;
+
+  // Object Storage
+  var objItems=[];
+  ['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){
+    var s=$('sl_'+k);if(!s)return;
+    var v=parseInt(s.value)||0;if(v<=0)return;
+    objItems.push({resource:LABELS[k]||k,sizeGB:v,subscriptionMo:v*csSubPrice(k),burstMo:v*csBurstPrice(k)});
+  });
+
+  // Network
+  var netItems=[];
+  var txSl=$('sl_tx'),txQt=$('qty_tx');
+  if(txSl&&txQt){
+    var txV=(parseInt(txSl.value)||0);var txQ=(parseInt(txQt.value)||1);
+    if(txV>0)netItems.push({resource:'Traffic',config:txV+' GB x '+txQ,subscriptionMo:txV*txQ*csSubPrice('tx'),burstMo:txV*txQ*csBurstPrice('tx')});
+  }
+  var bwKey=$('sl_bandwidth');
+  if(bwKey&&bwKey.value){
+    var bwLabel=LABELS[bwKey.value]||bwKey.value;
+    netItems.push({resource:bwLabel,config:'1',subscriptionMo:csSubPrice(bwKey.value),burstMo:csBurstPrice(bwKey.value)});
+  }
+  var vlSl=$('sl_vlan');
+  if(vlSl){var vlV=parseInt(vlSl.value)||0;if(vlV>0)netItems.push({resource:'VLAN',config:vlV+' VLANs',subscriptionMo:vlV*csSubPrice('vlan'),burstMo:vlV*csBurstPrice('vlan')});}
+
+  // PaaS
+  var paasT=calcPaas();
+  var paasItems=[];
+  if(paasT>0){
+    var dynC=parseInt(($('paas_dyn_cld')||{}).value)||0;
+    var staC=parseInt(($('paas_sta_cld')||{}).value)||0;
+    var stoGB=parseInt(($('paas_storage')||{}).value)||0;
+    var txGB=parseInt(($('paas_traffic')||{}).value)||0;
+    if(dynC>0)paasItems.push({resource:'Dynamic Cloudlets',config:dynC+' cld ('+dynC*128+' MB / '+dynC*400+' MHz)',monthly:dynC*PAAS_PRICE.dynamicCloudlet*730});
+    if(staC>0)paasItems.push({resource:'Static Cloudlets',config:staC+' cld ('+staC*128+' MB / '+staC*400+' MHz)',monthly:staC*PAAS_PRICE.staticCloudlet*730});
+    if(stoGB>0)paasItems.push({resource:'Storage',config:stoGB+' GB',monthly:stoGB*PAAS_PRICE.storagePerGBh*730});
+    if(txGB>0)paasItems.push({resource:'External Traffic',config:txGB+' GB',monthly:txGB*PAAS_PRICE.trafficPerGB});
+  }
+
+  // Omnifabric
+  var ofT=calcOmnifabric();
+  var ofItems=[];
+  if(ofT>0){
+    ofInstances.forEach(function(inst,idx){
+      var spec=OF_PRICE.compute[inst.spec]||OF_PRICE.compute[0];
+      var mo=spec.priceHr*730*inst.qty + inst.storageGB*OF_PRICE.storagePerGBmo;
+      ofItems.push({instance:'Instance '+(idx+1),spec:spec.label,qty:inst.qty,storageGB:inst.storageGB,monthly:mo});
+    });
+  }
+
+  // TaaS
+  var taasT=calcTaas();
+  var taasItems=[];
+  if(taasT>0){
+    var tel=$('panel-taas');
+    if(tel)tel.querySelectorAll('.taas-usage').forEach(function(inp){
+      var mtok=parseFloat(inp.value)||0;
+      if(mtok<=0)return;
+      var pIn=parseFloat(inp.dataset.input)||0;
+      var pOut=parseFloat(inp.dataset.output)||0;
+      var cost=mtok*(pIn*0.5+pOut*0.5);
+      taasItems.push({model:inp.dataset.model,mtokPerMo:mtok,monthly:cost});
+    });
+  }
+
+  // VM details
+  var vmData=[];
+  vmLines.forEach(function(vm){
+    var q=vm.qty||1;var cpuR=cpuResForVm(vm),memR=memResForVm(vm),ipR=ipResForVm(vm);
+    var cpuLabel=vm.hypervisor==='vmware'?'VMware':(vm.cpuType||'intel').toUpperCase();
+    var rows=[];
+    rows.push({resource:'CPU ('+cpuLabel+')',config:vm.cpu+' cores @ '+(vm.cpuSpeed||2)+' GHz',subscriptionMo:vm.cpu*(vm.cpuSpeed||2)*csSubPrice(cpuR)*730*q,burstMo:vm.cpu*(vm.cpuSpeed||2)*csBurstPrice(cpuR)*730*q});
+    rows.push({resource:'RAM',config:vm.ram+' GB',subscriptionMo:vm.ram*csSubPrice(memR)*730*q,burstMo:vm.ram*csBurstPrice(memR)*730*q});
+    vm.disks.forEach(function(d,i){var dl=LABELS[d.type]||d.type;rows.push({resource:'Disk '+(i+1)+' ('+dl+')',config:d.size+' GB',subscriptionMo:d.size*csSubPrice(d.type)*q,burstMo:d.size*csBurstPrice(d.type)*q});});
+    if(vm.localDisk>0&&vm.hypervisor==='kvm')rows.push({resource:'Local NVMe',config:vm.localDisk+' GB',subscriptionMo:vm.localDisk*csSubPrice('local_nvme')*q,burstMo:vm.localDisk*csBurstPrice('local_nvme')*q});
+    if(vm.backup>0)rows.push({resource:'Backup',config:vm.backup+' GB',subscriptionMo:vm.backup*csSubPrice('backup')*q,burstMo:vm.backup*csBurstPrice('backup')*q});
+    if(vm.ip>0)rows.push({resource:'Public IPs',config:String(vm.ip),subscriptionMo:vm.ip*csSubPrice(ipR)*q,burstMo:vm.ip*csBurstPrice(ipR)*q});
+    if(vm.gpu>0&&vm.hypervisor==='kvm')rows.push({resource:'GPU ('+vm.gpuType+')',config:String(vm.gpu),subscriptionMo:vm.gpu*csSubPrice(vm.gpuType)*730*q,burstMo:vm.gpu*csBurstPrice(vm.gpuType)*730*q});
+    if(vm.winOs&&vm.winOsQty>0)rows.push({resource:'Windows OS',config:vm.winOsQty+' lic',subscriptionMo:vm.winOsQty*csSubPrice(vm.winOs)*q,burstMo:vm.winOsQty*csBurstPrice(vm.winOs)*q});
+    if(vm.sqlLic&&vm.sqlLicQty>0)rows.push({resource:'SQL License',config:vm.sqlLicQty+' lic',subscriptionMo:vm.sqlLicQty*csSubPrice(vm.sqlLic)*q,burstMo:vm.sqlLicQty*csBurstPrice(vm.sqlLic)*q});
+    if(vm.rdsQty>0)rows.push({resource:'RDS CALs',config:String(vm.rdsQty),subscriptionMo:vm.rdsQty*csSubPrice('msft_tfa_00523')*q,burstMo:vm.rdsQty*csBurstPrice('msft_tfa_00523')*q});
+    vmData.push({name:vm.name,hypervisor:vm.hypervisor,qty:q,items:rows});
+  });
+
+  // Grand totals (including PaaS/OF/TaaS)
+  var grandSubTotal=csSmart.subTotal;
+  var grandBurstTotal=csSmart.burstTotal;
+  var grandTotal=csSmart.total;
+
+  return {
+    customer:customer,
+    opportunityName:opportunity,
+    notes:notes,
+    location:currentLocation.display_name,
+    currency:curLabel,
+    generatedAt:new Date().toISOString(),
+    virtualMachines:vmData,
+    objectStorage:objItems,
+    network:netItems,
+    paas:{pricingType:'burst',items:paasItems,total:paasT},
+    omnifabric:{pricingType:'burst',items:ofItems,total:ofT},
+    taas:{pricingType:'burst',items:taasItems,total:taasT},
+    totals:{
+      subscriptionMonthly:grandSubTotal,
+      burstMonthly:grandBurstTotal,
+      grandTotalMonthly:grandTotal,
+      commitmentOptions:{
+        monthly:{discount:'0%',subscriptionMo:grandSubTotal,burstMo:grandBurstTotal,totalMo:grandTotal,annualTotal:grandTotal*12},
+        oneYear:{discount:'10%',subscriptionMo:grandSubTotal*0.90,burstMo:grandBurstTotal,totalMo:grandSubTotal*0.90+grandBurstTotal,annualTotal:(grandSubTotal*0.90+grandBurstTotal)*12,savingsPerYear:grandTotal*12-(grandSubTotal*0.90+grandBurstTotal)*12},
+        threeYear:{discount:'25%',subscriptionMo:grandSubTotal*0.75,burstMo:grandBurstTotal,totalMo:grandSubTotal*0.75+grandBurstTotal,annualTotal:(grandSubTotal*0.75+grandBurstTotal)*12,savingsPerYear:grandTotal*12-(grandSubTotal*0.75+grandBurstTotal)*12}
+      }
+    },
+    breakdown:csSmart.breakdown
+  };
+}
+
 /* ────── PDF Export ────── */
 function exportPDF(){
-  var cs=calcCS(),csB=calcCSBurst();
+  var data=collectQuoteData();
+  var cs=calcCS(),csB=calcCSBurst(),csSmart=calcCSSmart();
   var sub1Y=cs.total*0.90,sub3Y=cs.total*0.75;
   var curLabel=displayCurrency;
+  var customer=data.customer;
+  var opportunity=data.opportunityName;
+  var notes=data.notes;
   var w=window.open('','_blank');
   var html='<html><head><title>CloudSigma Quote</title><style>';
   html+='body{font-family:Arial,sans-serif;padding:40px;color:#222;max-width:950px;margin:0 auto}';
-  html+='h1{color:#0099cc;margin-bottom:5px}h2{color:#333;border-bottom:2px solid #0099cc;padding-bottom:5px;margin-top:25px}';
+  html+='h1{color:#00A94F;margin-bottom:5px}h2{color:#333;border-bottom:2px solid #00A94F;padding-bottom:5px;margin-top:25px}';
   html+='table{width:100%;border-collapse:collapse;margin:10px 0}th,td{padding:6px 10px;text-align:left;border-bottom:1px solid #ddd;font-size:13px}';
-  html+='th{background:#f5f5f5;font-weight:600}.total-row{font-weight:700;border-top:2px solid #0099cc;font-size:14px}';
+  html+='th{background:#f5f5f5;font-weight:600}.total-row{font-weight:700;border-top:2px solid #00A94F;font-size:14px}';
   html+='.green{color:#059669}.orange{color:#d97706}.muted{color:#888;font-size:11px}.blue{color:#2563eb}';
   html+='.discount-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:15px;margin:15px 0}';
   html+='.discount-box h3{margin:0 0 10px;color:#059669}';
+  html+='.quote-info{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:15px;margin:15px 0}';
+  html+='.quote-info table{margin:0}.quote-info td{border:none;padding:4px 10px;font-size:13px}';
+  html+='.quote-info td:first-child{font-weight:600;color:#555;width:150px}';
+  html+='.notes-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:15px;margin:15px 0}';
+  html+='.notes-box h3{margin:0 0 8px;color:#92400e;font-size:14px}';
+  html+='.notes-box p{margin:0;white-space:pre-wrap;font-size:13px;color:#78350f}';
   html+='</style></head><body>';
   html+='<h1>CloudSigma Pricing Quote</h1>';
   html+='<p class="muted">Location: '+currentLocation.display_name+' &bull; Currency: '+curLabel+' &bull; Generated: '+new Date().toLocaleDateString()+'</p>';
+
+  // Customer & Opportunity info box
+  if(customer||opportunity){
+    html+='<div class="quote-info"><table>';
+    if(customer)html+='<tr><td>Customer</td><td>'+customer.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
+    if(opportunity)html+='<tr><td>Opportunity Name</td><td>'+opportunity.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
+    html+='<tr><td>Location</td><td>'+currentLocation.display_name+'</td></tr>';
+    html+='<tr><td>Currency</td><td>'+curLabel+'</td></tr>';
+    html+='<tr><td>Date</td><td>'+new Date().toLocaleDateString()+'</td></tr>';
+    html+='</table></div>';
+  }
 
   vmLines.forEach(function(vm){
     var q=vm.qty||1;var hvLabel=vm.hypervisor==='vmware'?' (VMware)':' (KVM)';
@@ -942,66 +1086,92 @@ function exportPDF(){
     html+='</table>';
   });
 
-  // PaaS section in PDF
+  // Object Storage section in PDF
+  if(data.objectStorage.length>0){
+    html+='<h2>Object Storage</h2>';
+    html+='<table><tr><th>Resource</th><th>Config</th><th class="green">Subscription/mo</th><th class="orange">Burst/mo</th></tr>';
+    var objSubT=0,objBurstT=0;
+    data.objectStorage.forEach(function(item){
+      html+='<tr><td>'+item.resource+'</td><td>'+item.sizeGB+' GB</td><td class="green">'+fmt(item.subscriptionMo)+'</td><td class="orange">'+fmt(item.burstMo)+'</td></tr>';
+      objSubT+=item.subscriptionMo;objBurstT+=item.burstMo;
+    });
+    html+='<tr class="total-row"><td>Object Storage Total</td><td></td><td class="green">'+fmt(objSubT)+'</td><td class="orange">'+fmt(objBurstT)+'</td></tr>';
+    html+='</table>';
+  }
+
+  // Network section in PDF
+  if(data.network.length>0){
+    html+='<h2>Network</h2>';
+    html+='<table><tr><th>Resource</th><th>Config</th><th class="green">Subscription/mo</th><th class="orange">Burst/mo</th></tr>';
+    var netSubT=0,netBurstT=0;
+    data.network.forEach(function(item){
+      html+='<tr><td>'+item.resource+'</td><td>'+item.config+'</td><td class="green">'+fmt(item.subscriptionMo)+'</td><td class="orange">'+fmt(item.burstMo)+'</td></tr>';
+      netSubT+=item.subscriptionMo;netBurstT+=item.burstMo;
+    });
+    html+='<tr class="total-row"><td>Network Total</td><td></td><td class="green">'+fmt(netSubT)+'</td><td class="orange">'+fmt(netBurstT)+'</td></tr>';
+    html+='</table>';
+  }
+
+  // PaaS section in PDF (burst only)
   var paasT=calcPaas();
   if(paasT>0){
-    var dynC=parseInt(($('paas_dyn_cld')||{}).value)||0;
-    var staC=parseInt(($('paas_sta_cld')||{}).value)||0;
-    var stoGB=parseInt(($('paas_storage')||{}).value)||0;
-    var txGB=parseInt(($('paas_traffic')||{}).value)||0;
-    html+='<h2>PaaS (Cloudlets)</h2>';
-    html+='<table><tr><th>Resource</th><th>Config</th><th class="green">Monthly</th></tr>';
-    if(dynC>0)html+='<tr><td>Dynamic Cloudlets</td><td>'+dynC+' cld ('+dynC*128+' MB / '+dynC*400+' MHz)</td><td class="green">'+fmt(dynC*PAAS_PRICE.dynamicCloudlet*730)+'</td></tr>';
-    if(staC>0)html+='<tr><td>Static Cloudlets</td><td>'+staC+' cld ('+staC*128+' MB / '+staC*400+' MHz)</td><td class="green">'+fmt(staC*PAAS_PRICE.staticCloudlet*730)+'</td></tr>';
-    if(stoGB>0)html+='<tr><td>Storage</td><td>'+stoGB+' GB</td><td class="green">'+fmt(stoGB*PAAS_PRICE.storagePerGBh*730)+'</td></tr>';
-    if(txGB>0)html+='<tr><td>External Traffic</td><td>'+txGB+' GB</td><td class="green">'+fmt(txGB*PAAS_PRICE.trafficPerGB)+'</td></tr>';
-    html+='<tr class="total-row"><td>PaaS Total</td><td></td><td class="green">'+fmt(paasT)+'</td></tr>';
+    html+='<h2>PaaS (Cloudlets) — Burst</h2>';
+    html+='<table><tr><th>Resource</th><th>Config</th><th class="orange">Burst/mo</th></tr>';
+    data.paas.items.forEach(function(item){
+      html+='<tr><td>'+item.resource+'</td><td>'+item.config+'</td><td class="orange">'+fmt(item.monthly)+'</td></tr>';
+    });
+    html+='<tr class="total-row"><td>PaaS Total</td><td></td><td class="orange">'+fmt(paasT)+'</td></tr>';
     html+='</table>';
   }
 
-  // Omnifabric section in PDF
+  // Omnifabric section in PDF (burst only)
   var ofT=calcOmnifabric();
   if(ofT>0){
-    html+='<h2>Omnifabric</h2>';
-    html+='<table><tr><th>Instance</th><th>Spec</th><th>Qty</th><th>Storage</th><th class="green">Monthly</th></tr>';
-    ofInstances.forEach(function(inst,idx){
-      var spec=OF_PRICE.compute[inst.spec]||OF_PRICE.compute[0];
-      var mo=spec.priceHr*730*inst.qty + inst.storageGB*OF_PRICE.storagePerGBmo;
-      html+='<tr><td>Instance '+(idx+1)+'</td><td>'+spec.label+'</td><td>'+inst.qty+'</td><td>'+inst.storageGB+' GB</td><td class="green">'+fmt(mo)+'</td></tr>';
+    html+='<h2>Omnifabric — Burst</h2>';
+    html+='<table><tr><th>Instance</th><th>Spec</th><th>Qty</th><th>Storage</th><th class="orange">Burst/mo</th></tr>';
+    data.omnifabric.items.forEach(function(item){
+      html+='<tr><td>'+item.instance+'</td><td>'+item.spec+'</td><td>'+item.qty+'</td><td>'+item.storageGB+' GB</td><td class="orange">'+fmt(item.monthly)+'</td></tr>';
     });
-    html+='<tr class="total-row"><td>Omnifabric Total</td><td></td><td></td><td></td><td class="green">'+fmt(ofT)+'</td></tr>';
+    html+='<tr class="total-row"><td>Omnifabric Total</td><td></td><td></td><td></td><td class="orange">'+fmt(ofT)+'</td></tr>';
     html+='</table>';
   }
 
-  // TaaS section in PDF
+  // TaaS section in PDF (burst only)
   var taasT=calcTaas();
   if(taasT>0){
-    html+='<h2>TaaS (AI Models)</h2>';
-    html+='<table><tr><th>Model</th><th>M tokens/mo</th><th class="green">Monthly</th></tr>';
-    var tel=$('panel-taas');
-    if(tel)tel.querySelectorAll('.taas-usage').forEach(function(inp){
-      var mtok=parseFloat(inp.value)||0;
-      if(mtok<=0)return;
-      var pIn=parseFloat(inp.dataset.input)||0;
-      var pOut=parseFloat(inp.dataset.output)||0;
-      var cost=mtok*(pIn*0.5+pOut*0.5);
-      html+='<tr><td>'+inp.dataset.model+'</td><td>'+mtok+'</td><td class="green">'+fmt(cost)+'</td></tr>';
+    html+='<h2>TaaS (AI Models) — Burst</h2>';
+    html+='<table><tr><th>Model</th><th>M tokens/mo</th><th class="orange">Burst/mo</th></tr>';
+    data.taas.items.forEach(function(item){
+      html+='<tr><td>'+item.model+'</td><td>'+item.mtokPerMo+'</td><td class="orange">'+fmt(item.monthly)+'</td></tr>';
     });
-    html+='<tr class="total-row"><td>TaaS Total</td><td></td><td class="green">'+fmt(taasT)+'</td></tr>';
+    html+='<tr class="total-row"><td>TaaS Total</td><td></td><td class="orange">'+fmt(taasT)+'</td></tr>';
     html+='</table>';
   }
 
+  // Grand Totals (including all services)
   html+='<h2>Monthly Totals</h2><table>';
-  html+='<tr class="total-row"><td>Subscription (Monthly)</td><td></td><td class="green">'+fmt(cs.total)+'</td><td></td></tr>';
-  html+='<tr class="total-row"><td>Burst (Current)</td><td></td><td class="orange">'+fmt(csB.total)+'</td><td></td></tr>';
+  html+='<tr><td>Subscription (Monthly)</td><td></td><td class="green">'+fmt(csSmart.subTotal)+'</td><td></td></tr>';
+  html+='<tr><td>Burst (Monthly)</td><td></td><td class="orange">'+fmt(csSmart.burstTotal)+'</td><td></td></tr>';
+  html+='<tr class="total-row"><td><strong>Grand Total (Monthly)</strong></td><td></td><td class="green"><strong>'+fmt(csSmart.total)+'</strong></td><td></td></tr>';
   html+='</table>';
 
-  html+='<div class="discount-box"><h3>\uD83D\uDCB0 Subscription Commitment Discounts</h3><table>';
-  html+='<tr><th>Commitment</th><th>Discount</th><th>Monthly</th><th>Annual</th><th>Savings/yr</th></tr>';
-  html+='<tr><td>Monthly</td><td>\u2014</td><td class="green">'+fmt(cs.total)+'</td><td>'+fmt(cs.total*12)+'</td><td>\u2014</td></tr>';
-  html+='<tr style="background:#f0fdf4"><td><strong>1 Year</strong></td><td class="blue"><strong>10%</strong></td><td class="green"><strong>'+fmt(sub1Y)+'</strong></td><td><strong>'+fmt(sub1Y*12)+'</strong></td><td class="green"><strong>'+fmt(cs.total*12-sub1Y*12)+'</strong></td></tr>';
-  html+='<tr style="background:#ecfdf5"><td><strong>3 Year</strong></td><td class="blue"><strong>25%</strong></td><td class="green"><strong>'+fmt(sub3Y)+'</strong></td><td><strong>'+fmt(sub3Y*12)+'</strong></td><td class="green"><strong>'+fmt(cs.total*12-sub3Y*12)+'</strong></td></tr>';
+  var burstMo=csSmart.burstTotal;
+  var totalMo0=cs.total+burstMo;
+  var total1Y=sub1Y+burstMo;
+  var total3Y=sub3Y+burstMo;
+  html+='<div class="discount-box"><h3>\uD83D\uDCB0 Subscription Commitment Discounts</h3>';
+  html+='<p style="font-size:12px;color:#555;margin-bottom:10px">Commitment discounts apply to subscription pricing. Burst pricing remains unchanged. The total column combines the discounted subscription with burst.</p>';
+  html+='<table>';
+  html+='<tr><th>Commitment</th><th>Discount</th><th class="green">Subscription/mo</th><th class="orange">Burst/mo</th><th style="color:#00A94F;font-weight:700">Total/mo</th><th>Annual Total</th><th>Savings/yr</th></tr>';
+  html+='<tr><td>Monthly</td><td>\u2014</td><td class="green">'+fmt(cs.total)+'</td><td class="orange">'+fmt(burstMo)+'</td><td style="font-weight:700">'+fmt(totalMo0)+'</td><td>'+fmt(totalMo0*12)+'</td><td>\u2014</td></tr>';
+  html+='<tr style="background:#f0fdf4"><td><strong>1 Year</strong></td><td class="blue"><strong>10%</strong></td><td class="green"><strong>'+fmt(sub1Y)+'</strong></td><td class="orange">'+fmt(burstMo)+'</td><td style="font-weight:700"><strong>'+fmt(total1Y)+'</strong></td><td><strong>'+fmt(total1Y*12)+'</strong></td><td class="green"><strong>'+fmt(totalMo0*12-total1Y*12)+'</strong></td></tr>';
+  html+='<tr style="background:#ecfdf5"><td><strong>3 Year</strong></td><td class="blue"><strong>25%</strong></td><td class="green"><strong>'+fmt(sub3Y)+'</strong></td><td class="orange">'+fmt(burstMo)+'</td><td style="font-weight:700"><strong>'+fmt(total3Y)+'</strong></td><td><strong>'+fmt(total3Y*12)+'</strong></td><td class="green"><strong>'+fmt(totalMo0*12-total3Y*12)+'</strong></td></tr>';
   html+='</table></div>';
+
+  // Notes section
+  if(notes){
+    html+='<div class="notes-box"><h3>\uD83D\uDCDD Notes</h3><p>'+notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p></div>';
+  }
 
   html+='<p class="muted" style="margin-top:30px">Estimate only. Subscription = level 0 (monthly). Burst = current load pricing. Commitment discounts apply to subscription only.</p>';
   html+='</body></html>';
@@ -1009,6 +1179,26 @@ function exportPDF(){
   setTimeout(function(){w.print();},500);
 }
 window.exportPDF=exportPDF;
+
+/* ────── JSON Export ────── */
+function exportJSON(){
+  var data=collectQuoteData();
+  // Round all numeric values to 2 decimal places for readability
+  var jsonStr=JSON.stringify(data,function(key,val){
+    if(typeof val==='number'&&key!=='qty'&&key!=='sizeGB'&&key!=='storageGB'&&key!=='mtokPerMo')return Math.round(val*100)/100;
+    return val;
+  },2);
+  var blob=new Blob([jsonStr],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  var filename='cloudsigma-quote';
+  if(data.customer)filename+='-'+data.customer.replace(/[^a-zA-Z0-9]/g,'_').substring(0,30);
+  filename+='-'+new Date().toISOString().slice(0,10)+'.json';
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+window.exportJSON=exportJSON;
 
 /* ────── Admin ────── */
 async function loadAdmin(){
