@@ -299,7 +299,23 @@ var BREAKDOWN_SECTION={
   '\u2601\uFE0F PaaS':'paas','\uD83D\uDDC4\uFE0F Omnifabric':'of','\uD83E\uDD16 TaaS':'taas'
 };
 function scrollToSection(key){
-  if(collapsed[key])toggleSection(key);
+  // Special handling for nested sections - need to open parent first
+  var parentKey = null;
+  if(['vm','obj','net','paas','of','taas'].includes(key)){
+    parentKey = 'cfg';
+  }
+  
+  // Open parent section first if needed
+  if(parentKey && collapsed[parentKey]){
+    toggleSection(parentKey);
+  }
+  
+  // Open the target section if collapsed
+  if(collapsed[key]){
+    toggleSection(key);
+  }
+  
+  // Scroll to the section
   var el=$('section-body-'+key);
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
 }
