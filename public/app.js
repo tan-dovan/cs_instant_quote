@@ -12,6 +12,12 @@ var CC_MAP={CH:'CHF',US:'USD',GB:'GBP',CZ:'CZK',GR:'EUR',AU:'AUD',JP:'JPY',SA:'S
 function flag(cc){if(!cc||cc.length!==2)return'';return String.fromCodePoint.apply(null,cc.toUpperCase().split('').map(function(c){return 0x1F1E6+c.charCodeAt(0)-65}))}
 function $(id){return document.getElementById(id)}
 
+/* ── UUID v4 generator ── */
+function uuidv4(){
+  return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)});
+}
+var opportunityId=uuidv4();
+
 /* ── Currency-aware formatting ── */
 function fmt(n){
   if(displayCurrency==='USD')return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
@@ -104,6 +110,8 @@ function burstOnlyCell(b,idB){return'<div class="vm-row-prices"><div class="vm-r
 
 /* ── Init ── */
 async function init(){
+  // Set opportunity ID
+  if($('quoteOpportunityId'))$('quoteOpportunityId').value=opportunityId;
   await loadLocations();
   renderVmTable();buildObjPanel();buildNetPanel();buildPaasPanel();buildOfPanel();
   $('locationSelect').addEventListener('change',onLocationChange);
@@ -908,6 +916,7 @@ function collectQuoteData(){
   var cs=calcCS(),csB=calcCSBurst(),csSmart=calcCSSmart();
   var customer=($('quoteCustomer')||{}).value||'';
   var opportunity=($('quoteOpportunity')||{}).value||'';
+  var oppId=opportunityId;
   var notes=($('quoteNotes')||{}).value||'';
   var curLabel=displayCurrency;
 
@@ -999,6 +1008,7 @@ function collectQuoteData(){
   var grandTotal=csSmart.total;
 
   return {
+    opportunityId:oppId,
     customer:customer,
     opportunityName:opportunity,
     notes:notes,
@@ -1054,15 +1064,14 @@ function exportPDF(){
   html+='<p class="muted">Location: '+currentLocation.display_name+' &bull; Currency: '+curLabel+' &bull; Generated: '+new Date().toLocaleDateString()+'</p>';
 
   // Customer & Opportunity info box
-  if(customer||opportunity){
-    html+='<div class="quote-info"><table>';
-    if(customer)html+='<tr><td>Customer</td><td>'+customer.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
-    if(opportunity)html+='<tr><td>Opportunity Name</td><td>'+opportunity.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
-    html+='<tr><td>Location</td><td>'+currentLocation.display_name+'</td></tr>';
-    html+='<tr><td>Currency</td><td>'+curLabel+'</td></tr>';
-    html+='<tr><td>Date</td><td>'+new Date().toLocaleDateString()+'</td></tr>';
-    html+='</table></div>';
-  }
+  html+='<div class="quote-info"><table>';
+  if(customer)html+='<tr><td>Customer</td><td>'+customer.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
+  if(opportunity)html+='<tr><td>Opportunity Name</td><td>'+opportunity.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
+  html+='<tr><td>Opportunity ID</td><td style="font-family:monospace;font-size:12px">'+opportunityId+'</td></tr>';
+  html+='<tr><td>Location</td><td>'+currentLocation.display_name+'</td></tr>';
+  html+='<tr><td>Currency</td><td>'+curLabel+'</td></tr>';
+  html+='<tr><td>Date</td><td>'+new Date().toLocaleDateString()+'</td></tr>';
+  html+='</table></div>';
 
   vmLines.forEach(function(vm){
     var q=vm.qty||1;var hvLabel=vm.hypervisor==='vmware'?' (VMware)':' (KVM)';
@@ -1176,7 +1185,6 @@ function exportPDF(){
   html+='<p class="muted" style="margin-top:30px">Estimate only. Subscription = level 0 (monthly). Burst = current load pricing. Commitment discounts apply to subscription only.</p>';
   html+='</body></html>';
   w.document.write(html);w.document.close();
-  setTimeout(function(){w.print();},500);
 }
 window.exportPDF=exportPDF;
 
@@ -1219,4 +1227,28 @@ function renderOverrides(ov){
   h+='</table>';el.innerHTML=h;
 }
 window.delOverride=async function(loc,r){await fetch('/api/admin/overrides/'+loc+'/'+r,{method:'DELETE'});var res=await fetch('/api/admin/overrides');renderOverrides(await res.json());await onLocationChange()};
+
+/* ────── Save Quote to backend ────── */
+async function saveQuote(){
+  var data=collectQuoteData();
+  var statusEl=$('saveStatus');
+  var btn=$('btnSaveQuote');
+  if(btn)btn.disabled=true;
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--text-secondary)">Saving...</span>';
+  try{
+    var res=await fetch('/api/quotes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    var result=await res.json();
+    if(res.ok){
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">\u2713 Saved ('+result.opportunityId.substring(0,8)+'...)</span>';
+    }else{
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 '+( result.error||'Save failed')+'</span>';
+    }
+  }catch(e){
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 Network error</span>';
+  }
+  if(btn)btn.disabled=false;
+  setTimeout(function(){if(statusEl)statusEl.innerHTML='';},5000);
+}
+window.saveQuote=saveQuote;
+
 init();

@@ -2,3 +2,5 @@ node_modules/
 deploy/
 /tmp/
 *.log
+quotes.json
+price_overrides.json
