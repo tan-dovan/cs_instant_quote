@@ -925,7 +925,7 @@ function collectQuoteData(){
   ['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){
     var s=$('sl_'+k);if(!s)return;
     var v=parseInt(s.value)||0;if(v<=0)return;
-    objItems.push({resource:LABELS[k]||k,sizeGB:v,subscriptionMo:v*csSubPrice(k),burstMo:v*csBurstPrice(k)});
+    objItems.push({resource:LABELS[k]||k,resourceKey:k,qty:v,unit:'GB',sizeGB:v,subscriptionMo:v*csSubPrice(k),burstMo:v*csBurstPrice(k)});
   });
 
   // Network
@@ -933,15 +933,15 @@ function collectQuoteData(){
   var txSl=$('sl_tx'),txQt=$('qty_tx');
   if(txSl&&txQt){
     var txV=(parseInt(txSl.value)||0);var txQ=(parseInt(txQt.value)||1);
-    if(txV>0)netItems.push({resource:'Traffic',config:txV+' GB x '+txQ,subscriptionMo:txV*txQ*csSubPrice('tx'),burstMo:txV*txQ*csBurstPrice('tx')});
+    if(txV>0)netItems.push({resource:'Traffic',resourceKey:'tx',qty:txV,unit:'GB',multiplier:txQ,config:txV+' GB x '+txQ,subscriptionMo:txV*txQ*csSubPrice('tx'),burstMo:txV*txQ*csBurstPrice('tx')});
   }
   var bwKey=$('sl_bandwidth');
   if(bwKey&&bwKey.value){
     var bwLabel=LABELS[bwKey.value]||bwKey.value;
-    netItems.push({resource:bwLabel,config:'1',subscriptionMo:csSubPrice(bwKey.value),burstMo:csBurstPrice(bwKey.value)});
+    netItems.push({resource:bwLabel,resourceKey:bwKey.value,qty:1,unit:'subscription',config:'1',subscriptionMo:csSubPrice(bwKey.value),burstMo:csBurstPrice(bwKey.value)});
   }
   var vlSl=$('sl_vlan');
-  if(vlSl){var vlV=parseInt(vlSl.value)||0;if(vlV>0)netItems.push({resource:'VLAN',config:vlV+' VLANs',subscriptionMo:vlV*csSubPrice('vlan'),burstMo:vlV*csBurstPrice('vlan')});}
+  if(vlSl){var vlV=parseInt(vlSl.value)||0;if(vlV>0)netItems.push({resource:'VLAN',resourceKey:'vlan',qty:vlV,unit:'VLANs',config:vlV+' VLANs',subscriptionMo:vlV*csSubPrice('vlan'),burstMo:vlV*csBurstPrice('vlan')});}
 
   // PaaS
   var paasT=calcPaas();
@@ -951,10 +951,10 @@ function collectQuoteData(){
     var staC=parseInt(($('paas_sta_cld')||{}).value)||0;
     var stoGB=parseInt(($('paas_storage')||{}).value)||0;
     var txGB=parseInt(($('paas_traffic')||{}).value)||0;
-    if(dynC>0)paasItems.push({resource:'Dynamic Cloudlets',config:dynC+' cld ('+dynC*128+' MB / '+dynC*400+' MHz)',monthly:dynC*PAAS_PRICE.dynamicCloudlet*730});
-    if(staC>0)paasItems.push({resource:'Static Cloudlets',config:staC+' cld ('+staC*128+' MB / '+staC*400+' MHz)',monthly:staC*PAAS_PRICE.staticCloudlet*730});
-    if(stoGB>0)paasItems.push({resource:'Storage',config:stoGB+' GB',monthly:stoGB*PAAS_PRICE.storagePerGBh*730});
-    if(txGB>0)paasItems.push({resource:'External Traffic',config:txGB+' GB',monthly:txGB*PAAS_PRICE.trafficPerGB});
+    if(dynC>0)paasItems.push({resource:'Dynamic Cloudlets',qty:dynC,unit:'cloudlets',config:dynC+' cld ('+dynC*128+' MB / '+dynC*400+' MHz)',monthly:dynC*PAAS_PRICE.dynamicCloudlet*730});
+    if(staC>0)paasItems.push({resource:'Static Cloudlets',qty:staC,unit:'cloudlets',config:staC+' cld ('+staC*128+' MB / '+staC*400+' MHz)',monthly:staC*PAAS_PRICE.staticCloudlet*730});
+    if(stoGB>0)paasItems.push({resource:'Storage',qty:stoGB,unit:'GB',config:stoGB+' GB',monthly:stoGB*PAAS_PRICE.storagePerGBh*730});
+    if(txGB>0)paasItems.push({resource:'External Traffic',qty:txGB,unit:'GB',config:txGB+' GB',monthly:txGB*PAAS_PRICE.trafficPerGB});
   }
 
   // Omnifabric
@@ -999,7 +999,14 @@ function collectQuoteData(){
     if(vm.winOs&&vm.winOsQty>0)rows.push({resource:'Windows OS',config:vm.winOsQty+' lic',subscriptionMo:vm.winOsQty*csSubPrice(vm.winOs)*q,burstMo:vm.winOsQty*csBurstPrice(vm.winOs)*q});
     if(vm.sqlLic&&vm.sqlLicQty>0)rows.push({resource:'SQL License',config:vm.sqlLicQty+' lic',subscriptionMo:vm.sqlLicQty*csSubPrice(vm.sqlLic)*q,burstMo:vm.sqlLicQty*csBurstPrice(vm.sqlLic)*q});
     if(vm.rdsQty>0)rows.push({resource:'RDS CALs',config:String(vm.rdsQty),subscriptionMo:vm.rdsQty*csSubPrice('msft_tfa_00523')*q,burstMo:vm.rdsQty*csBurstPrice('msft_tfa_00523')*q});
-    vmData.push({name:vm.name,hypervisor:vm.hypervisor,qty:q,items:rows});
+    vmData.push({name:vm.name,hypervisor:vm.hypervisor,qty:q,
+      specs:{cpu:vm.cpu,cpuSpeed:vm.cpuSpeed||2,cpuType:vm.cpuType||'intel',ram:vm.ram,
+        disks:vm.disks.map(function(d){return{type:d.type,sizeGB:d.size};}),
+        localDiskGB:vm.localDisk||0,backupGB:vm.backup||0,publicIPs:vm.ip||0,
+        gpu:vm.gpu||0,gpuType:vm.gpuType||'',
+        winOs:vm.winOs||'',winOsQty:vm.winOsQty||0,
+        sqlLic:vm.sqlLic||'',sqlLicQty:vm.sqlLicQty||0,rdsQty:vm.rdsQty||0},
+      items:rows});
   });
 
   // Grand totals (including PaaS/OF/TaaS)
@@ -1250,5 +1257,134 @@ async function saveQuote(){
   setTimeout(function(){if(statusEl)statusEl.innerHTML='';},5000);
 }
 window.saveQuote=saveQuote;
+
+/* ────── Load Quote list ────── */
+async function loadQuoteList(){
+  var panel=$('quoteListPanel');
+  if(!panel)return;
+  // Toggle panel
+  if(panel.style.display!=='none'){panel.style.display='none';return;}
+  panel.style.display='block';
+  panel.innerHTML='<div style="padding:.5rem;text-align:center;color:var(--text-secondary);font-size:.75rem">Loading...</div>';
+  try{
+    var res=await fetch('/api/quotes');
+    var result=await res.json();
+    if(!result.quotes||result.quotes.length===0){
+      panel.innerHTML='<div style="padding:.5rem;text-align:center;color:var(--text-secondary);font-size:.75rem">No saved quotes</div>';
+      return;
+    }
+    var h='';
+    result.quotes.forEach(function(q){
+      var date=q.savedAt?new Date(q.savedAt).toLocaleDateString()+' '+new Date(q.savedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—';
+      var custName=q.customer||'(no customer)';
+      var idShort=q.opportunityId?q.opportunityId.substring(0,8)+'...':'—';
+      h+='<div onclick="loadQuote(\''+q.opportunityId+'\')" style="padding:.45rem .6rem;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'var(--border-color)\'" onmouseout="this.style.background=\'transparent\'">';
+      h+='<div style="font-size:.78rem;font-weight:600;color:var(--text-primary)">'+custName.replace(/</g,'&lt;')+'</div>';
+      h+='<div style="font-size:.65rem;color:var(--text-secondary);display:flex;justify-content:space-between;margin-top:.15rem">';
+      h+='<span style="font-family:monospace">'+idShort+'</span>';
+      h+='<span>'+date+'</span>';
+      h+='</div>';
+      if(q.opportunityName)h+='<div style="font-size:.65rem;color:var(--cs-green);margin-top:.1rem">'+q.opportunityName.replace(/</g,'&lt;')+'</div>';
+      h+='</div>';
+    });
+    panel.innerHTML=h;
+  }catch(e){
+    panel.innerHTML='<div style="padding:.5rem;text-align:center;color:var(--red,#e74c3c);font-size:.75rem">Error loading quotes</div>';
+  }
+}
+window.loadQuoteList=loadQuoteList;
+
+/* ────── Load a single quote and populate the form ────── */
+async function loadQuote(id){
+  var panel=$('quoteListPanel');
+  if(panel)panel.style.display='none';
+  var statusEl=$('saveStatus');
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--text-secondary)">Loading quote...</span>';
+  try{
+    var res=await fetch('/api/quotes/'+encodeURIComponent(id));
+    var q=await res.json();
+    if(!res.ok){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 '+(q.error||'Not found')+'</span>';return;}
+
+    // Restore opportunity ID
+    opportunityId=q.opportunityId||opportunityId;
+    if($('quoteOpportunityId'))$('quoteOpportunityId').value=opportunityId;
+
+    // Restore customer, opportunity name, notes
+    if($('quoteCustomer'))$('quoteCustomer').value=q.customer||'';
+    if($('quoteOpportunity'))$('quoteOpportunity').value=q.opportunityName||'';
+    if($('quoteNotes'))$('quoteNotes').value=q.notes||'';
+
+    // Restore VMs from specs
+    if(q.virtualMachines&&q.virtualMachines.length>0){
+      vmLines=[];
+      nextVmId=1;
+      q.virtualMachines.forEach(function(vm){
+        var s=vm.specs||{};
+        var disks=(s.disks&&s.disks.length>0)?s.disks.map(function(d){return{type:d.type||'dssd',size:d.sizeGB||0}}):[{type:'dssd',size:0}];
+        vmLines.push({id:nextVmId++,qty:vm.qty||1,name:vm.name||'VM '+nextVmId,
+          cpu:s.cpu||0,cpuSpeed:s.cpuSpeed||2,ram:s.ram||0,cpuType:s.cpuType||'intel',
+          hypervisor:vm.hypervisor||'kvm',disks:disks,
+          localDisk:s.localDiskGB||0,backup:s.backupGB||0,gpu:s.gpu||0,gpuType:s.gpuType||'gpu_nvidia_a100',
+          ip:s.publicIPs||0,winOs:s.winOs||'',winOsQty:s.winOsQty||0,
+          sqlLic:s.sqlLic||'',sqlLicQty:s.sqlLicQty||0,rdsQty:s.rdsQty||0});
+      });
+      renderVmTable();
+    }
+
+    // Restore Object Storage
+    if(q.objectStorage){
+      q.objectStorage.forEach(function(item){
+        var sl=$('sl_'+item.resourceKey);
+        if(sl)sl.value=item.qty||item.sizeGB||0;
+      });
+      buildObjPanel();
+    }
+
+    // Restore Network
+    if(q.network){
+      q.network.forEach(function(item){
+        if(item.resourceKey==='tx'){
+          var sl=$('sl_tx');if(sl)sl.value=item.qty||0;
+          var qt=$('qty_tx');if(qt)qt.value=item.multiplier||1;
+        }else if(item.resourceKey==='vlan'){
+          var sl=$('sl_vlan');if(sl)sl.value=item.qty||0;
+        }else if(item.resourceKey){
+          var bw=$('sl_bandwidth');if(bw)bw.value=item.resourceKey;
+        }
+      });
+    }
+
+    // Restore PaaS
+    if(q.paas&&q.paas.items){
+      q.paas.items.forEach(function(item){
+        if(item.resource==='Dynamic Cloudlets'){var e=$('paas_dyn_cld');if(e)e.value=item.qty||0;}
+        if(item.resource==='Static Cloudlets'){var e=$('paas_sta_cld');if(e)e.value=item.qty||0;}
+        if(item.resource==='Storage'){var e=$('paas_storage');if(e)e.value=item.qty||0;}
+        if(item.resource==='External Traffic'){var e=$('paas_traffic');if(e)e.value=item.qty||0;}
+      });
+    }
+
+    // Restore Omnifabric
+    if(q.omnifabric&&q.omnifabric.items&&q.omnifabric.items.length>0){
+      ofInstances=[];
+      q.omnifabric.items.forEach(function(item){
+        // Find spec index by label
+        var specIdx=0;
+        OF_PRICE.compute.forEach(function(c,ci){if(c.label===item.spec)specIdx=ci;});
+        ofInstances.push({id:ofNextId++,spec:specIdx,qty:item.qty||1,storageGB:item.storageGB||0});
+      });
+      buildOfPanel();
+    }
+
+    // Trigger recalculation
+    recalc();
+
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">\u2713 Quote loaded ('+opportunityId.substring(0,8)+'...)</span>';
+    setTimeout(function(){if(statusEl)statusEl.innerHTML='';},4000);
+  }catch(e){
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 Load error</span>';
+  }
+}
+window.loadQuote=loadQuote;
 
 init();
