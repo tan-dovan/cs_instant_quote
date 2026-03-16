@@ -1,13 +1,49 @@
 var locations=[],pricing={},competitors={},currentLocation=null;
 var vmLines=[{id:1,qty:1,name:'VM 1',cpu:0,cpuSpeed:2,ram:0,cpuType:'intel',hypervisor:'kvm',disks:[{type:'dssd',size:0}],localDisk:0,backup:0,gpu:0,gpuType:'gpu_nvidia_a100',ip:0,winOs:'',winOsQty:0,sqlLic:'',sqlLicQty:0,rdsQty:0}];
 var nextVmId=2;
+var objStorageState={obj_hdd:0,obj_nvme:0,obj_caching:0};
+var netState={tx:0,txQty:1,bandwidth:'',vlan:0};
+var dpState={migration:0,backup:0,backupCapacity:0,dr:0,drCapacity:0};
+var k8sState={nodes:0,vcpu:4,ram:8,storageGB:0};
 var FX={USD:1,CHF:1.12,EUR:1.08,GBP:1.27,CZK:0.045,AUD:0.65,JPY:0.0067,SAR:0.27,TRY:0.031,MXN:0.058,PHP:0.018,MYR:0.22,EGP:0.032,BGN:0.55};
 var burstLevels={};
-var collapsed={loc:true,cfg:true,vm:true,obj:true,net:true,paas:true,of:true,taas:true,sum:true,cmp:true};
+var collapsed={loc:true,cfg:true,vm:true,obj:true,net:true,dp:true,paas:true,of:true,taas:true,k8s:true,sum:true,cmp:true};
 var taasModels=[];
 var displayCurrency='USD'; // current display currency code
 var localCurrency='EUR';   // local currency for this location
 var CC_MAP={CH:'CHF',US:'USD',GB:'GBP',CZ:'CZK',GR:'EUR',AU:'AUD',JP:'JPY',SA:'SAR',TR:'TRY',MX:'MXN',PH:'PHP',MY:'MYR',EG:'EGP',BG:'BGN',DE:'EUR',IE:'EUR',ZA:'MYR',NL:'EUR',SE:'EUR'};
+
+/* ── Currency helper ── */
+var CC_MAP={CH:'CHF',US:'USD',GB:'GBP',CZ:'CZK',GR:'EUR',AU:'AUD',JP:'JPY',SA:'SAR',TR:'TRY',MX:'MXN',PH:'PHP',MY:'MYR',EG:'EGP',BG:'BGN',DE:'EUR',IE:'EUR',ZA:'MYR',NL:'EUR',SE:'EUR'};
+
+/* ── Currency helper ── */
+function getCurrencyName(code){
+  var names={USD:'US Dollar',CHF:'Swiss Franc',EUR:'Euro',GBP:'British Pound',CZK:'Czech Koruna',AUD:'Australian Dollar',JPY:'Japanese Yen',SAR:'Saudi Riyal',TRY:'Turkish Lira',MXN:'Mexican Peso',PHP:'Philippine Peso',MYR:'Malaysian Ringgit',EGP:'Egyptian Pound',BGN:'Bulgarian Lev'};
+  return names[code]||code;
+}
+
+/* ── Get local currency for country ── */
+function getLocalCurrency(countryCode){
+  return CC_MAP[countryCode] || 'USD';
+}
+
+/* ── Default resource selection helpers ── */
+function getDefaultStorageType(){
+  // Get available storage types from pricing data
+  var availableTypes = [];
+  if(pricing.resource_types) {
+    Object.keys(pricing.resource_types).forEach(function(resource) {
+      if(resource.includes('nvme')) availableTypes.push(resource);
+      else if(resource === 'dssd') availableTypes.push(resource);
+    });
+  }
+  
+  // Prefer NVMe if available, otherwise SSD
+  var nvmeTypes = availableTypes.filter(function(t) { return t.includes('nvme'); });
+  if(nvmeTypes.length > 0) return nvmeTypes[0];
+  if(availableTypes.includes('dssd')) return 'dssd';
+  return 'dssd'; // fallback
+}
 
 function flag(cc){if(!cc||cc.length!==2)return'';return String.fromCodePoint.apply(null,cc.toUpperCase().split('').map(function(c){return 0x1F1E6+c.charCodeAt(0)-65}))}
 function $(id){return document.getElementById(id)}
@@ -53,7 +89,11 @@ var RES_INFO={
   paas_dyn:'Dynamic cloudlets scale automatically with load. Billed per cloudlet/hour. 1 cloudlet = 128 MB + 400 MHz.',
   paas_sta:'Static (reserved) cloudlets are always allocated. Lower price than dynamic. 1 cloudlet = 128 MB + 400 MHz.',
   paas_sto:'PaaS disk storage. Billed per GB/hour.',
-  paas_tx:'External outbound traffic from PaaS environments. Per GB.'
+  paas_tx:'External outbound traffic from PaaS environments. Per GB.',
+  k8s_nodes:'Number of Kubernetes worker nodes.',
+  k8s_vcpu:'vCPUs allocated per node.',
+  k8s_ram:'RAM (GB) allocated per node.',
+  k8s_storage:'Persistent volume storage shared across the cluster. Per GB/month.'
 };
 
 var LABELS={intel_cpu:'Intel CPU',intel_mem:'Intel RAM',arm_cpu:'ARM CPU',arm_mem:'ARM RAM',amd_cpu:'AMD CPU',amd_mem:'AMD RAM',cpu_vmware:'VMware CPU',mem_vmware:'VMware RAM',dssd:'SSD',nvme:'NVMe',nvme_basic:'NVMe Basic',nvme_standard:'NVMe Standard',nvme_fast:'NVMe Fast',nvme_super_fast:'NVMe Super Fast',zadara:'HDD',dssd_vmware:'SSD (VMware)',nvme_vmware:'NVMe (VMware)',local_nvme:'Local NVMe',backup:'Backup',ip:'Public IP',ip_vmware:'Public IP (VMware)',vlan:'VLAN',vlan_vmware:'VLAN (VMware)',tx:'Traffic',tx_vmware:'Traffic (VMware)',obj_hdd:'Object HDD',obj_nvme:'Object NVMe',obj_caching:'S3 Caching',obj_traffic:'Object Traffic',gpu_nvidia_a100:'GPU A100',gpu_nvidia_l40s:'GPU L40S',epc:'EPC Memory',msft_6wc_00002:'Win Srv Std',msft_9ea_00039:'Win Srv DC',msft_7nq_00302:'SQL Std',msft_7jq_00341:'SQL Enterprise',msft_tfa_00523:'RDS CAL',vrouter_basic_s:'vRouter Basic',vrouter_basic:'vRouter Basic',bandwidth_50:'Bandwidth 50 Mbps',bandwidth_100:'Bandwidth 100 Mbps',bandwidth_500:'Bandwidth 500 Mbps',bandwidth_1000:'Bandwidth 1 Gbps'};
@@ -83,9 +123,16 @@ function hasVMware(){
   var avail=pricing.resource_types?Object.keys(pricing.resource_types):[];
   return avail.includes('cpu_vmware');
 }
-function getCpuFreq(){return pricing.cpu_frequency||{min:0.5,max:5.0,default:2.0};}
-function getCpuFreqDefault(){return getCpuFreq().default||2.0;}
-function getCpuFreq(){return pricing.cpu_frequency||{min:0.5,max:5.0,default:2.0};}
+function getCpuFreq(){
+  // Since CloudSigma API doesn't provide CPU frequency ranges,
+  // we use reasonable defaults based on typical cloud offerings
+  // These can be overridden by location-specific config if needed
+  return pricing.cpu_frequency || {
+    min: 1.0,   // Minimum 1.0 GHz (was 0.5)
+    max: 4.0,   // Maximum 4.0 GHz (was 5.0) 
+    default: 2.0 // Default 2.0 GHz
+  };
+}
 function getCpuFreqDefault(){return getCpuFreq().default||2.0;}
 function getAvailCpuTypes(){
   var avail=pricing.resource_types?Object.keys(pricing.resource_types):[];
@@ -113,41 +160,110 @@ async function init(){
   // Set opportunity ID
   if($('quoteOpportunityId'))$('quoteOpportunityId').value=opportunityId;
   await loadLocations();
-  renderVmTable();buildObjPanel();buildNetPanel();buildPaasPanel();buildOfPanel();
+  renderVmTable();buildObjPanel();buildNetPanel();buildDpPanel();buildPaasPanel();buildOfPanel();buildK8sPanel();
   $('locationSelect').addEventListener('change',onLocationChange);
   $('currencySelect').addEventListener('change',onCurrencyChange);
   await onLocationChange();
   // Load TaaS models in background (non-blocking)
   loadTaasModels().then(function(){buildTaasPanel();renderResourceTable();});
 }
-async function loadLocations(){var res=await fetch('/api/locations');var data=await res.json();locations=data.objects;var opts=locations.map(function(l){var host=l.api_endpoint.replace('https://','').replace('/api/2.0/','');return'<option value="'+host+'" data-cc="'+l.country_code+'">'+flag(l.country_code)+'  '+l.display_name+'</option>'}).join('');$('locationSelect').innerHTML=opts;if($('adminLocation'))$('adminLocation').innerHTML=opts}
+async function loadLocations(){
+  var res=await fetch('/api/locations');
+  var data=await res.json();
+  locations=data.objects;
+  
+  // Find NEXT (Sofia, Bulgaria) location and set it as default
+  var nextLocation = locations.find(function(l){
+    return l.api_endpoint.includes('next.cloudsigma.com');
+  });
+  
+  var opts='';
+  var defaultSelected = false;
+  
+  locations.forEach(function(l){
+    var host=l.api_endpoint.replace('https://','').replace('/api/2.0/','');
+    var isNext = l.api_endpoint.includes('next.cloudsigma.com');
+    var selected = isNext ? ' selected' : '';
+    if(isNext) defaultSelected = true;
+    opts+='<option value="'+host+'" data-cc="'+l.country_code+'"'+selected+'>'+flag(l.country_code)+'  '+l.display_name+'</option>';
+  });
+  
+  // If NEXT not found, select first location
+  if(!defaultSelected && locations.length > 0) {
+    opts = opts.replace('<option', '<option selected');
+  }
+  
+  $('locationSelect').innerHTML=opts;
+  if($('adminLocation'))$('adminLocation').innerHTML=opts;
+}
 
 function onCurrencyChange(){
   displayCurrency=$('currencySelect').value;
-  renderResourceTable();renderVmTable();buildObjPanel();buildNetPanel();buildPaasPanel();buildOfPanel();buildTaasPanel();recalc();
+  renderResourceTable();renderVmTable();buildObjPanel();buildNetPanel();buildDpPanel();buildPaasPanel();buildOfPanel();buildTaasPanel();buildK8sPanel();recalc();
 }
 
 async function onLocationChange(){
   var host=$('locationSelect').value;var cc=$('locationSelect').selectedOptions[0].dataset.cc;
   currentLocation=locations.find(function(l){return l.api_endpoint.includes(host)});
   localCurrency=CC_MAP[cc]||'EUR';
-  // Update currency selector
-  var csel=$('currencySelect');
-  var opts='<option value="USD">USD (US Dollar)</option>';
-  if(localCurrency!=='USD')opts+='<option value="'+localCurrency+'">'+localCurrency+' (Local)</option>';
-  csel.innerHTML=opts;
-  displayCurrency='USD';
-  $('currencyInfo').textContent='Local currency: '+localCurrency;
+  
+  // Fetch pricing and competitors data
   var results=await Promise.all([fetch('/api/pricing/'+host),fetch('/api/competitors/'+cc)]);
   pricing=await results[0].json();competitors=await results[1].json();
+  
+  // Extract currencies from resource_types to maintain API order
+  var allCurrencies = [];
+  if(pricing.resource_types) {
+    // Get currencies from first resource type to maintain API order
+    var firstResource = Object.keys(pricing.resource_types)[0];
+    if(firstResource && pricing.resource_types[firstResource].currencies) {
+      allCurrencies = pricing.resource_types[firstResource].currencies;
+    }
+  }
+  
+  // Fallback to extracting from objects if resource_types not available
+  if(allCurrencies.length === 0 && pricing.objects) {
+    pricing.objects.forEach(function(obj) {
+      if(allCurrencies.indexOf(obj.currency) === -1) {
+        allCurrencies.push(obj.currency);
+      }
+    });
+  }
+  
+  // Update currency selector with all available currencies
+  var csel=$('currencySelect');
+  var opts='';
+  allCurrencies.forEach(function(cur){
+    var label=cur+' ('+getCurrencyName(cur)+')';
+    opts+='<option value="'+cur+'">'+label+'</option>';
+  });
+  csel.innerHTML=opts;
+  
+  // Set display currency - NEXT uses EUR, others use local currency
+  var cc=$('locationSelect').selectedOptions[0].dataset.cc;
+  var localCur = getLocalCurrency(cc);
+  
+  if(host.includes('next.cloudsigma.com')) {
+    displayCurrency = 'EUR';
+  } else if(allCurrencies.indexOf(localCur) !== -1) {
+    // Use local currency if available
+    displayCurrency = localCur;
+  } else {
+    // Fallback to first available currency
+    displayCurrency = allCurrencies[0] || 'USD';
+  }
+  csel.value = displayCurrency;
+  
+  $('currencyInfo').textContent='Available currencies: ' + allCurrencies.join(', ');
+  
   burstLevels=pricing.current||{};
-  // Clamp cpuSpeed to location limits
+  
+  // Clamp cpuSpeed to location limits; reset to default if out of range
   var cf=getCpuFreq();
   vmLines.forEach(function(vm){
-    if(vm.cpuSpeed<cf.min)vm.cpuSpeed=cf.min;
-    if(vm.cpuSpeed>cf.max)vm.cpuSpeed=cf.max;
+    if(vm.cpuSpeed<cf.min||vm.cpuSpeed>cf.max)vm.cpuSpeed=cf.default||2.0;
   });
-  renderResourceTable();renderVmTable();buildObjPanel();buildNetPanel();buildPaasPanel();buildOfPanel();buildTaasPanel();recalc();
+  renderResourceTable();renderVmTable();buildObjPanel();buildNetPanel();buildDpPanel();buildPaasPanel();buildOfPanel();buildTaasPanel();buildK8sPanel();recalc();
 }
 
 /* ────── Resource price table (KVM / VMware / Object Storage / Licenses) ────── */
@@ -228,6 +344,14 @@ function renderResourceTable(){
   h+=groupHeader('\uD83C\uDF10 Network');
   h+='<tr><td style="padding-left:1.5rem">External Traffic</td><td style="color:var(--text-secondary);font-size:.72rem">per GB</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(PAAS_PRICE.trafficPerGB)+'</td></tr>';
 
+  // Data Protection section
+  h+=sectionHeader('🛡️ Data Protection',false);
+  h+='<tr><td style="padding-left:1.5rem">Migration</td><td style="color:var(--text-secondary);font-size:.72rem">per unit/mo</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(dpEurToDisplay(DP_PRICE.migration))+'</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">Backup</td><td style="color:var(--text-secondary);font-size:.72rem">per unit/mo</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(dpEurToDisplay(DP_PRICE.backup))+'</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">Backup Capacity</td><td style="color:var(--text-secondary);font-size:.72rem">per GB/mo</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(dpEurToDisplay(DP_PRICE.backupCapacity))+'</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">DR</td><td style="color:var(--text-secondary);font-size:.72rem">per unit/mo</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(dpEurToDisplay(DP_PRICE.dr))+'</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">DR Capacity</td><td style="color:var(--text-secondary);font-size:.72rem">per GB/mo</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(dpEurToDisplay(DP_PRICE.drCapacity))+'</td></tr>';
+
   // Omnifabric section
   h+=sectionHeader('\uD83D\uDDC4\uFE0F Omnifabric',false);
   h+=groupHeader('\uD83D\uDCBB Compute Nodes');
@@ -269,6 +393,14 @@ function renderResourceTable(){
     });
   }
 
+  // Kubernetes section
+  h+=sectionHeader('\u2388\uFE0F Kubernetes',false);
+  h+=groupHeader('\u26A1 Compute (per Node)');
+  h+='<tr><td style="padding-left:1.5rem">vCPU</td><td style="color:var(--text-secondary);font-size:.72rem">vCPU/hour</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(K8S_VCPU_PRICE_HR)+'</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">RAM</td><td style="color:var(--text-secondary);font-size:.72rem">GB/hour</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(K8S_RAM_PRICE_HR)+'</td></tr>';
+  h+=groupHeader('\uD83D\uDCBE Storage');
+  h+='<tr><td style="padding-left:1.5rem">Persistent Volume</td><td style="color:var(--text-secondary);font-size:.72rem">GB/month</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(K8S_STORAGE_PRICE_MO)+'</td></tr>';
+
   h+='</tbody></table>';
   el.innerHTML=h;
 }
@@ -296,12 +428,14 @@ var BREAKDOWN_SECTION={
   '\uD83C\uDF10 IPs':'vm','\uD83D\uDE80 GPU':'vm',
   '\uD83E\uDE9F Microsoft Licenses':'vm',
   '\uD83D\uDDC4\uFE0F Object Storage':'obj','\uD83C\uDF10 Network':'net',
-  '\u2601\uFE0F PaaS':'paas','\uD83D\uDDC4\uFE0F Omnifabric':'of','\uD83E\uDD16 TaaS':'taas'
+  '🛡️ Data Protection':'dp',
+  '\u2601\uFE0F PaaS':'paas','\uD83D\uDDC4\uFE0F Omnifabric':'of','\uD83E\uDD16 TaaS':'taas',
+  '\u2388\uFE0F Kubernetes':'k8s'
 };
 function scrollToSection(key){
   // Special handling for nested sections - need to open parent first
   var parentKey = null;
-  if(['vm','obj','net','paas','of','taas'].includes(key)){
+  if(['vm','obj','net','dp','paas','of','taas','k8s'].includes(key)){
     parentKey = 'cfg';
   }
   
@@ -344,6 +478,8 @@ function clearResourceGroup(bdKey){
     var tel=$('panel-taas');
     if(tel)tel.querySelectorAll('.taas-usage').forEach(function(inp){inp.value=0;});
     if(typeof updateTaas==='function')updateTaas();
+  }else if(sec==='k8s'){
+    k8sState={nodes:0,vcpu:4,ram:8,storageGB:0};buildK8sPanel();
   }
   recalc();
 }
@@ -543,15 +679,17 @@ function buildObjPanel(){
   var el=$('panel-objstorage');var h='';
   items.forEach(function(r){
     var ok=avail.includes(r.key);
+    var curVal=objStorageState[r.key]||0;
+    var subMo=curVal*csSubPrice(r.key),burstMo=curVal*csBurstPrice(r.key);
     h+='<div class="vm-row'+(ok?'':' vm-row-disabled')+'"><div class="vm-row-label">'+r.label+' '+infoBubble(r.key)+freeTag(r.key)+'</div>';
-    h+='<div class="vm-row-input"><input type="number" id="sl_'+r.key+'" min="0" max="50000" step="100" value="0"'+(ok?'':' disabled')+'> <span class="vm-row-unit">GB/mo</span></div>';
-    h+=priceCell(0,0,'ps_'+r.key,'pb_'+r.key)+'</div>';
+    h+='<div class="vm-row-input"><input type="number" id="sl_'+r.key+'" min="0" max="50000" step="100" value="'+curVal+'"'+(ok?'':' disabled')+'> <span class="vm-row-unit">GB/mo</span></div>';
+    h+=priceCell(subMo,burstMo,'ps_'+r.key,'pb_'+r.key)+'</div>';
   });
   el.innerHTML=h;
   items.forEach(function(r){
     if(!avail.includes(r.key))return;
     var inp=$('sl_'+r.key);
-    function update(){var v=parseInt(inp.value)||0;var e1=$('ps_'+r.key),e2=$('pb_'+r.key);if(e1)e1.textContent=fmt(v*csSubPrice(r.key));if(e2)e2.textContent=fmt(v*csBurstPrice(r.key));recalc();}
+    function update(){var v=parseInt(inp.value)||0;objStorageState[r.key]=v;var e1=$('ps_'+r.key),e2=$('pb_'+r.key);if(e1)e1.textContent=fmt(v*csSubPrice(r.key));if(e2)e2.textContent=fmt(v*csBurstPrice(r.key));recalc();}
     inp.addEventListener('input',update);inp.addEventListener('change',update);
   });
 }
@@ -562,35 +700,121 @@ function buildNetPanel(){
   var el=$('panel-network');var h='';
   var txOk=avail.includes('tx');
   h+='<div class="vm-row'+(txOk?'':' vm-row-disabled')+'"><div class="vm-row-label">Traffic '+infoBubble('tx')+freeTag('tx')+'</div>';
-  h+='<div class="vm-row-input"><input type="number" id="sl_tx" min="0" max="100000" step="100" value="0"'+(txOk?'':' disabled')+'> <span class="vm-row-unit">GB/mo</span>';
-  h+=' &times; <input type="number" id="qty_tx" value="1" min="1" max="100"'+(txOk?'':' disabled')+' style="width:55px"></div>';
-  h+=priceCell(0,0,'ps_net_tx','pb_net_tx')+'</div>';
+  h+='<div class="vm-row-input"><input type="number" id="sl_tx" min="0" max="100000" step="100" value="'+netState.tx+'"'+(txOk?'':' disabled')+'> <span class="vm-row-unit">GB/mo</span>';
+  h+=' &times; <input type="number" id="qty_tx" value="'+netState.txQty+'" min="1" max="100"'+(txOk?'':' disabled')+' style="width:55px"></div>';
+  h+=priceCell(netState.tx*netState.txQty*csSubPrice('tx'),netState.tx*netState.txQty*csBurstPrice('tx'),'ps_net_tx','pb_net_tx')+'</div>';
 
   var bwKeys=avail.filter(function(k){return k.indexOf('bandwidth_')===0;}).sort(function(a,b){return(parseInt(a.split('_')[1])||0)-(parseInt(b.split('_')[1])||0);});
   h+='<div class="vm-row'+(bwKeys.length?'':' vm-row-disabled')+'"><div class="vm-row-label">Bandwidth '+infoBubble('bandwidth')+'</div>';
   h+='<div class="vm-row-input"><select id="sl_bandwidth"'+(bwKeys.length?'':' disabled')+'><option value="">None</option>';
-  bwKeys.forEach(function(k){var s=k.replace('bandwidth_','');var label=parseInt(s)>=1000?(parseInt(s)/1000)+' Gbps':s+' Mbps';h+='<option value="'+k+'">'+label+'</option>';});
+  bwKeys.forEach(function(k){var s=k.replace('bandwidth_','');var label=parseInt(s)>=1000?(parseInt(s)/1000)+' Gbps':s+' Mbps';h+='<option value="'+k+'"'+(k===netState.bandwidth?' selected':'')+'>'+label+'</option>';});
   h+='</select></div>';
-  h+=priceCell(0,0,'ps_net_bandwidth','pb_net_bandwidth')+'</div>';
+  var bwSub=netState.bandwidth?csSubPrice(netState.bandwidth):0,bwBurst=netState.bandwidth?csBurstPrice(netState.bandwidth):0;
+  h+=priceCell(bwSub,bwBurst,'ps_net_bandwidth','pb_net_bandwidth')+'</div>';
 
   var vlanOk=avail.includes('vlan');
   h+='<div class="vm-row'+(vlanOk?'':' vm-row-disabled')+'"><div class="vm-row-label">VLAN '+infoBubble('vlan')+freeTag('vlan')+'</div>';
-  h+='<div class="vm-row-input"><input type="number" id="sl_vlan" min="0" max="10" step="1" value="0"'+(vlanOk?'':' disabled')+'> <span class="vm-row-unit">VLANs</span></div>';
-  h+=priceCell(0,0,'ps_net_vlan','pb_net_vlan')+'</div>';
+  h+='<div class="vm-row-input"><input type="number" id="sl_vlan" min="0" max="10" step="1" value="'+netState.vlan+'"'+(vlanOk?'':' disabled')+'> <span class="vm-row-unit">VLANs</span></div>';
+  h+=priceCell(netState.vlan*csSubPrice('vlan'),netState.vlan*csBurstPrice('vlan'),'ps_net_vlan','pb_net_vlan')+'</div>';
 
   el.innerHTML=h;
   function updateNet(){
-    var txV=(parseInt($('sl_tx').value)||0)*(parseInt($('qty_tx').value)||1);
+    netState.tx=parseInt($('sl_tx').value)||0;
+    netState.txQty=parseInt($('qty_tx').value)||1;
+    netState.bandwidth=$('sl_bandwidth').value;
+    netState.vlan=parseInt($('sl_vlan').value)||0;
+    var txV=netState.tx*netState.txQty;
     var e1=$('ps_net_tx'),e2=$('pb_net_tx');if(e1)e1.textContent=fmt(txV*csSubPrice('tx'));if(e2)e2.textContent=fmt(txV*csBurstPrice('tx'));
-    var bwKey=$('sl_bandwidth').value;var bwS=bwKey?csSubPrice(bwKey):0,bwB=bwKey?csBurstPrice(bwKey):0;
+    var bwKey=netState.bandwidth;var bwS=bwKey?csSubPrice(bwKey):0,bwB=bwKey?csBurstPrice(bwKey):0;
     var e3=$('ps_net_bandwidth'),e4=$('pb_net_bandwidth');if(e3)e3.textContent=fmt(bwS);if(e4)e4.textContent=fmt(bwB);
-    var vlV=parseInt($('sl_vlan').value)||0;var e5=$('ps_net_vlan'),e6=$('pb_net_vlan');if(e5)e5.textContent=fmt(vlV*csSubPrice('vlan'));if(e6)e6.textContent=fmt(vlV*csBurstPrice('vlan'));
+    var vlV=netState.vlan;var e5=$('ps_net_vlan'),e6=$('pb_net_vlan');if(e5)e5.textContent=fmt(vlV*csSubPrice('vlan'));if(e6)e6.textContent=fmt(vlV*csBurstPrice('vlan'));
     recalc();
   }
   ['sl_tx','qty_tx','sl_bandwidth','sl_vlan'].forEach(function(id){var e=$(id);if(e){e.addEventListener('input',updateNet);e.addEventListener('change',updateNet);}});
 }
 
 /* ────── PaaS (Cloudlet-based) ────── */
+/* ────── Data Protection ────── */
+var DP_PRICE={
+  migration: 100,    // EUR/mo per unit
+  backup: 4,         // EUR/mo per unit
+  backupCapacity: 0.04, // EUR/mo per GB
+  dr: 12,            // EUR/mo per unit
+  drCapacity: 0.04   // EUR/mo per GB
+};
+var DP_LABELS={migration:'Migration',backup:'Backup',backupCapacity:'Backup Capacity',dr:'DR',drCapacity:'DR Capacity'};
+function dpEurToDisplay(eurVal){
+  // Convert EUR to display currency
+  if(displayCurrency==='EUR')return eurVal;
+  var eurToUsd=1.08; // EUR->USD
+  var usdVal=eurVal*eurToUsd;
+  return usdVal/(FX[displayCurrency]||1);
+}
+function buildDpPanel(){
+  var el=$('panel-dp');if(!el)return;
+  var h='';
+  h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">All Data Protection prices are in EUR (converted to display currency)</div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">Migration</div>';
+  h+='<div class="vm-row-input"><input type="number" id="dp_migration" min="0" max="1000" value="'+dpState.migration+'"> <span class="vm-row-unit">units</span></div>';
+  h+=priceCell(0,dpEurToDisplay(dpState.migration*DP_PRICE.migration),'pb_dp_migration','pb_dp_migration')+'</div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">Backup</div>';
+  h+='<div class="vm-row-input"><input type="number" id="dp_backup" min="0" max="1000" value="'+dpState.backup+'"> <span class="vm-row-unit">units</span></div>';
+  h+=priceCell(dpEurToDisplay(dpState.backup*DP_PRICE.backup),0,'pb_dp_backup','pb_dp_backup')+'</div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">Backup Capacity</div>';
+  h+='<div class="vm-row-input"><input type="number" id="dp_backupCapacity" min="0" max="100000" step="100" value="'+dpState.backupCapacity+'"> <span class="vm-row-unit">GB</span></div>';
+  h+=priceCell(dpEurToDisplay(dpState.backupCapacity*DP_PRICE.backupCapacity),0,'pb_dp_backupCap','pb_dp_backupCap')+'</div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">DR (Disaster Recovery)</div>';
+  h+='<div class="vm-row-input"><input type="number" id="dp_dr" min="0" max="1000" value="'+dpState.dr+'"> <span class="vm-row-unit">units</span></div>';
+  h+=priceCell(dpEurToDisplay(dpState.dr*DP_PRICE.dr),0,'pb_dp_dr','pb_dp_dr')+'</div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">DR Capacity</div>';
+  h+='<div class="vm-row-input"><input type="number" id="dp_drCapacity" min="0" max="100000" step="100" value="'+dpState.drCapacity+'"> <span class="vm-row-unit">GB</span></div>';
+  h+=priceCell(dpEurToDisplay(dpState.drCapacity*DP_PRICE.drCapacity),0,'pb_dp_drCap','pb_dp_drCap')+'</div>';
+
+  el.innerHTML=h;
+
+  function updateDp(){
+    dpState.migration=parseInt($('dp_migration').value)||0;
+    dpState.backup=parseInt($('dp_backup').value)||0;
+    dpState.backupCapacity=parseInt($('dp_backupCapacity').value)||0;
+    dpState.dr=parseInt($('dp_dr').value)||0;
+    dpState.drCapacity=parseInt($('dp_drCapacity').value)||0;
+    function s(id,v){var e=$(id);if(e)e.textContent=fmt(v);}
+    s('pb_dp_migration',dpEurToDisplay(dpState.migration*DP_PRICE.migration)); s('pb_dp_migration',dpEurToDisplay(dpState.migration*DP_PRICE.migration));
+    s('pb_dp_backup',dpEurToDisplay(dpState.backup*DP_PRICE.backup)); s('pb_dp_backup',dpEurToDisplay(0));
+    s('pb_dp_backupCap',dpEurToDisplay(dpState.backupCapacity*DP_PRICE.backupCapacity)); s('pb_dp_backupCap',dpEurToDisplay(0));
+    s('pb_dp_dr',dpEurToDisplay(dpState.dr*DP_PRICE.dr)); s('pb_dp_dr',dpEurToDisplay(0));
+    s('pb_dp_drCap',dpEurToDisplay(dpState.drCapacity*DP_PRICE.drCapacity)); s('pb_dp_drCap',dpEurToDisplay(0));
+    recalc();
+  }
+  ['dp_migration','dp_backup','dp_backupCapacity','dp_dr','dp_drCapacity'].forEach(function(id){
+    var e=$(id);if(e){e.addEventListener('input',updateDp);e.addEventListener('change',updateDp);}
+  });
+}
+
+// Data Protection totals
+function calcDpUpfront(){
+  // Migration is upfront (one-time)
+  return dpEurToDisplay(dpState.migration*DP_PRICE.migration);
+}
+function calcDpSubscription(){
+  // Backup/DR/Capacity are subscription (monthly)
+  return dpEurToDisplay(
+    dpState.backup*DP_PRICE.backup +
+    dpState.backupCapacity*DP_PRICE.backupCapacity +
+    dpState.dr*DP_PRICE.dr +
+    dpState.drCapacity*DP_PRICE.drCapacity
+  );
+}
+function calcDp(){
+  // Total DP = upfront + subscription
+  return calcDpUpfront() + calcDpSubscription();
+}
+
 var PAAS_PRICE={
   dynamicCloudlet: 0.009293 * 1.12,   // CHF->USD per hour
   staticCloudlet:  0.006195 * 1.12,   // CHF->USD per hour
@@ -863,6 +1087,78 @@ function calcTaas(){
   return total;
 }
 
+/* ────── Kubernetes ────── */
+// K8s pricing: node compute billed via CloudSigma VM rates (intel CPU + RAM)
+// Storage: billed as NVMe (or SSD fallback) per GB/month
+var K8S_VCPU_PRICE_HR=0.007;  // USD/vCPU/hour (approximates intel_cpu subscription)
+var K8S_RAM_PRICE_HR=0.004;   // USD/GB RAM/hour
+var K8S_STORAGE_PRICE_MO=0.10; // USD/GB/month (NVMe persistent volume)
+
+function buildK8sPanel(){
+  var el=$('panel-k8s');if(!el)return;
+  var h='';
+  h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">Kubernetes cluster sizing. Pricing is based on CloudSigma compute rates for worker nodes plus persistent storage.</div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">Worker Nodes '+infoBubble('k8s_nodes')+'</div>';
+  h+='<div class="vm-row-input"><input type="number" id="k8s_nodes" min="0" max="500" step="1" value="'+k8sState.nodes+'"> <span class="vm-row-unit">nodes</span></div>';
+  h+='<div style="flex:1"></div></div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">vCPU per Node '+infoBubble('k8s_vcpu')+'</div>';
+  h+='<div class="vm-row-input"><input type="number" id="k8s_vcpu" min="1" max="256" step="1" value="'+k8sState.vcpu+'"> <span class="vm-row-unit">vCPUs</span></div>';
+  h+='<div style="flex:1"></div></div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">RAM per Node '+infoBubble('k8s_ram')+'</div>';
+  h+='<div class="vm-row-input"><input type="number" id="k8s_ram" min="1" max="1024" step="1" value="'+k8sState.ram+'"> <span class="vm-row-unit">GB</span></div>';
+  h+='<div style="flex:1"></div></div>';
+
+  h+='<div class="vm-row"><div class="vm-row-label">Persistent Storage '+infoBubble('k8s_storage')+'</div>';
+  h+='<div class="vm-row-input"><input type="number" id="k8s_storageGB" min="0" max="500000" step="100" value="'+k8sState.storageGB+'"> <span class="vm-row-unit">GB</span></div>';
+  h+=burstOnlyCell(0,'pb_k8s_sto')+'</div>';
+
+  var computeMo=k8sState.nodes*((k8sState.vcpu*K8S_VCPU_PRICE_HR)+(k8sState.ram*K8S_RAM_PRICE_HR))*730;
+  var storageMo=k8sState.storageGB*K8S_STORAGE_PRICE_MO;
+  h+='<div id="k8s_summary" style="margin-top:.5rem;font-size:.75rem;color:var(--text-secondary)">';
+  if(k8sState.nodes>0){
+    h+='<strong>'+k8sState.nodes+'</strong> node(s) &times; '+(k8sState.vcpu)+' vCPU / '+(k8sState.ram)+' GB RAM';
+    h+=' &bull; Compute: <strong>'+fmt(computeMo)+'</strong>/mo';
+    if(storageMo>0)h+=' &bull; Storage: <strong>'+fmt(storageMo)+'</strong>/mo';
+    h+=' &bull; <strong>Total: '+fmt(computeMo+storageMo)+'</strong>/mo';
+  }
+  h+='</div>';
+
+  el.innerHTML=h;
+
+  function updateK8s(){
+    k8sState.nodes=parseInt($('k8s_nodes').value)||0;
+    k8sState.vcpu=parseInt($('k8s_vcpu').value)||1;
+    k8sState.ram=parseInt($('k8s_ram').value)||1;
+    k8sState.storageGB=parseInt($('k8s_storageGB').value)||0;
+    var cMo=k8sState.nodes*((k8sState.vcpu*K8S_VCPU_PRICE_HR)+(k8sState.ram*K8S_RAM_PRICE_HR))*730;
+    var sMo=k8sState.storageGB*K8S_STORAGE_PRICE_MO;
+    var e=$('pb_k8s_sto');if(e)e.textContent=fmt(sMo);
+    var sum=$('k8s_summary');
+    if(sum){
+      if(k8sState.nodes>0){
+        sum.innerHTML='<strong>'+k8sState.nodes+'</strong> node(s) &times; '+k8sState.vcpu+' vCPU / '+k8sState.ram+' GB RAM'+
+          ' &bull; Compute: <strong>'+fmt(cMo)+'</strong>/mo'+
+          (sMo>0?' &bull; Storage: <strong>'+fmt(sMo)+'</strong>/mo':'')+
+          ' &bull; <strong>Total: '+fmt(cMo+sMo)+'</strong>/mo';
+      }else{sum.innerHTML='';}
+    }
+    recalc();
+  }
+  ['k8s_nodes','k8s_vcpu','k8s_ram','k8s_storageGB'].forEach(function(id){
+    var e=$(id);if(e){e.addEventListener('input',updateK8s);e.addEventListener('change',updateK8s);}
+  });
+}
+
+function calcK8s(){
+  if(k8sState.nodes<=0)return 0;
+  var computeMo=k8sState.nodes*((k8sState.vcpu*K8S_VCPU_PRICE_HR)+(k8sState.ram*K8S_RAM_PRICE_HR))*730;
+  var storageMo=k8sState.storageGB*K8S_STORAGE_PRICE_MO;
+  return computeMo+storageMo;
+}
+
 /* ────── Calc ────── */
 function calcCSMode(priceFn){
   var bd={};var vmT=0,winT=0,bkT=0,ipT=0,gpuT=0;
@@ -880,18 +1176,24 @@ function calcCSMode(priceFn){
   if(vmT>0)bd['\u26A1 Compute & Storage']=vmT;if(bkT>0)bd['\uD83D\uDCBE Backup']=bkT;
   if(ipT>0)bd['\uD83C\uDF10 IPs']=ipT;if(gpuT>0)bd['\uD83D\uDE80 GPU']=gpuT;
   if(winT>0)bd['\uD83E\uDE9F Microsoft Licenses']=winT;
-  var objT=0;['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){var s=$('sl_'+k);if(s)objT+=parseFloat(s.value)*priceFn(k);});
+  var objT=0;['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){var v=objStorageState[k]||0;if(v>0)objT+=v*priceFn(k);});
   if(objT>0)bd['\uD83D\uDDC4\uFE0F Object Storage']=objT;
-  var netT=0;var txSl=$('sl_tx'),txQt=$('qty_tx');if(txSl&&txQt)netT+=(parseInt(txQt.value)||1)*parseFloat(txSl.value)*priceFn('tx');
-  var bwKey=$('sl_bandwidth');if(bwKey&&bwKey.value)netT+=priceFn(bwKey.value);
-  var vlSl=$('sl_vlan');if(vlSl)netT+=parseFloat(vlSl.value)*priceFn('vlan');
+  var netT=0;netT+=netState.tx*netState.txQty*priceFn('tx');
+  if(netState.bandwidth)netT+=priceFn(netState.bandwidth);
+  netT+=netState.vlan*priceFn('vlan');
   if(netT>0)bd['\uD83C\uDF10 Network']=netT;
   var total=0;for(var k in bd)total+=bd[k];return{total:total,breakdown:bd};
 }
 function addBurstOnlyItems(r){
+  // Data Protection - split into upfront vs subscription
+  var dpUpfront=calcDpUpfront();
+  var dpSubscription=calcDpSubscription();
+  if(dpUpfront>0){r.breakdown['🛡️ Data Protection (Upfront)']=dpUpfront;r.total+=dpUpfront;}
+  if(dpSubscription>0){r.breakdown['🛡️ Data Protection (Subscription)']=dpSubscription;r.total+=dpSubscription;}
   var paasT=calcPaas();if(paasT>0){r.breakdown['\u2601\uFE0F PaaS']=paasT;r.total+=paasT;}
   var ofT=calcOmnifabric();if(ofT>0){r.breakdown['\uD83D\uDDC4\uFE0F Omnifabric']=ofT;r.total+=ofT;}
   var taasT=calcTaas();if(taasT>0){r.breakdown['\uD83E\uDD16 TaaS']=taasT;r.total+=taasT;}
+  var k8sT=calcK8s();if(k8sT>0){r.breakdown['\u2388\uFE0F Kubernetes']=k8sT;r.total+=k8sT;}
   return r;
 }
 function calcCS(){return calcCSMode(csSubPrice);}
@@ -899,6 +1201,7 @@ function calcCSBurst(){return calcCSMode(csBurstPrice);}
 function calcCSSmart(){
   var r=addBurstOnlyItems(calcCSMode(csSmartPrice));
   r.subTotal=calcCS().total;
+  r.upfront=r.upfront||0;
   r.burstTotal=r.total-r.subTotal;
   return r;
 }
@@ -915,10 +1218,17 @@ function calcComp(prov){
     var w=0;if(vm.winOs&&vm.winOsQty>0)w+=vm.winOsQty*(wp[vm.winOs]||0);if(vm.sqlLic&&vm.sqlLicQty>0)w+=vm.sqlLicQty*(wp[vm.sqlLic]||0);if(vm.rdsQty>0)w+=vm.rdsQty*(wp['msft_tfa_00523']||0);winT+=q*w;
   });
   if(vmT>0)bd['\u26A1 Compute & Storage']=vmT;if(bkT>0)bd['\uD83D\uDCBE Backup']=bkT;if(ipT>0)bd['\uD83C\uDF10 IPs']=ipT;if(gpuT>0)bd['\uD83D\uDE80 GPU']=gpuT;if(winT>0)bd['\uD83E\uDE9F Microsoft Licenses']=winT;
-  var objT=0;['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){var s=$('sl_'+k);if(s)objT+=parseFloat(s.value)*(prov.obj_storage||0.023);});
+  var objT=0;['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){var v=objStorageState[k]||0;if(v>0)objT+=v*(prov.obj_storage||0.023);});
   if(objT>0)bd['\uD83D\uDDC4\uFE0F Object Storage']=objT;
-  var netT=0;var txSl=$('sl_tx'),txQt=$('qty_tx');if(txSl&&txQt)netT+=(parseInt(txQt.value)||1)*parseFloat(txSl.value)*(prov.bandwidth||0.09);
+  var netT=0;netT+=netState.tx*netState.txQty*(prov.bandwidth||0.09);
   if(netT>0)bd['\uD83C\uDF10 Network']=netT;
+  // Kubernetes — priced as managed node compute (EKS/AKS/GKE node rates)
+  if(k8sState.nodes>0){
+    var k8sCompT=k8sState.nodes*((k8sState.vcpu*(prov.cpu||0.0464))+(k8sState.ram*(prov.ram||0.00624)))*730;
+    var k8sStoT=k8sState.storageGB*(prov.ssd||0.10);
+    var k8sProvT=k8sCompT+k8sStoT;
+    if(k8sProvT>0)bd['\u2388\uFE0F Kubernetes']=k8sProvT;
+  }
   var total=0;for(var k in bd)total+=bd[k];return{total:total,breakdown:bd};
 }
 
@@ -952,6 +1262,7 @@ function recalc(){
     fh+='<div style="border-top:1px solid var(--border-color);margin-top:.4rem;padding-top:.3rem">';
     fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.7rem;color:var(--green)">Subscription</span><span style="font-size:.82rem;font-weight:600;color:var(--green)">'+fmt(csSmart.subTotal)+'</span></div>';
     fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.7rem;color:var(--orange)">Burst</span><span style="font-size:.82rem;font-weight:600;color:var(--orange)">'+fmt(csSmart.burstTotal)+'</span></div>';
+    if(csSmart.upfront>0){fh+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.7rem;color:var(--cs-green)">Upfront</span><span style="font-size:.82rem;font-weight:600;color:var(--cs-green)">'+fmt(csSmart.upfront)+'</span></div>';}
     fh+='</div>';
     fh+='<div style="border-top:2px solid var(--cs-green);margin-top:.3rem;padding-top:.4rem;display:flex;justify-content:space-between;align-items:baseline;gap:.5rem"><span style="font-size:.75rem;font-weight:700;color:var(--cs-green)">TOTAL</span><span style="font-size:1.05rem;font-weight:700;color:var(--green)">'+fmt(csSmart.total)+'</span></div>';
     fb.innerHTML=fh;
@@ -994,28 +1305,23 @@ function collectQuoteData(){
   var notes=($('quoteNotes')||{}).value||'';
   var curLabel=displayCurrency;
 
-  // Object Storage
+  // Object Storage (read from persistent state)
   var objItems=[];
   ['obj_hdd','obj_nvme','obj_caching'].forEach(function(k){
-    var s=$('sl_'+k);if(!s)return;
-    var v=parseInt(s.value)||0;if(v<=0)return;
+    var v=objStorageState[k]||0;if(v<=0)return;
     objItems.push({resource:LABELS[k]||k,resourceKey:k,qty:v,unit:'GB',sizeGB:v,subscriptionMo:v*csSubPrice(k),burstMo:v*csBurstPrice(k)});
   });
 
-  // Network
+  // Network (read from persistent state)
   var netItems=[];
-  var txSl=$('sl_tx'),txQt=$('qty_tx');
-  if(txSl&&txQt){
-    var txV=(parseInt(txSl.value)||0);var txQ=(parseInt(txQt.value)||1);
-    if(txV>0)netItems.push({resource:'Traffic',resourceKey:'tx',qty:txV,unit:'GB',multiplier:txQ,config:txV+' GB x '+txQ,subscriptionMo:txV*txQ*csSubPrice('tx'),burstMo:txV*txQ*csBurstPrice('tx')});
+  if(netState.tx>0){
+    netItems.push({resource:'Traffic',resourceKey:'tx',qty:netState.tx,unit:'GB',multiplier:netState.txQty,config:netState.tx+' GB x '+netState.txQty,subscriptionMo:netState.tx*netState.txQty*csSubPrice('tx'),burstMo:netState.tx*netState.txQty*csBurstPrice('tx')});
   }
-  var bwKey=$('sl_bandwidth');
-  if(bwKey&&bwKey.value){
-    var bwLabel=LABELS[bwKey.value]||bwKey.value;
-    netItems.push({resource:bwLabel,resourceKey:bwKey.value,qty:1,unit:'subscription',config:'1',subscriptionMo:csSubPrice(bwKey.value),burstMo:csBurstPrice(bwKey.value)});
+  if(netState.bandwidth){
+    var bwLabel=LABELS[netState.bandwidth]||netState.bandwidth;
+    netItems.push({resource:bwLabel,resourceKey:netState.bandwidth,qty:1,unit:'subscription',config:'1',subscriptionMo:csSubPrice(netState.bandwidth),burstMo:csBurstPrice(netState.bandwidth)});
   }
-  var vlSl=$('sl_vlan');
-  if(vlSl){var vlV=parseInt(vlSl.value)||0;if(vlV>0)netItems.push({resource:'VLAN',resourceKey:'vlan',qty:vlV,unit:'VLANs',config:vlV+' VLANs',subscriptionMo:vlV*csSubPrice('vlan'),burstMo:vlV*csBurstPrice('vlan')});}
+  if(netState.vlan>0){netItems.push({resource:'VLAN',resourceKey:'vlan',qty:netState.vlan,unit:'VLANs',config:netState.vlan+' VLANs',subscriptionMo:netState.vlan*csSubPrice('vlan'),burstMo:netState.vlan*csBurstPrice('vlan')});}
 
   // PaaS
   var paasT=calcPaas();
@@ -1055,6 +1361,20 @@ function collectQuoteData(){
       var cost=mtok*(pIn*0.5+pOut*0.5);
       taasItems.push({model:inp.dataset.model,mtokPerMo:mtok,monthly:cost});
     });
+  }
+
+  // Data Protection - split upfront vs subscription
+  var dpUpfront=calcDpUpfront();
+  var dpSubscription=calcDpSubscription();
+  var dpItems=[];
+  // Migration - upfront (one-time)
+  if(dpUpfront>0)dpItems.push({resource:'Migration',qty:dpState.migration,unit:'units',upfront:dpUpfront,monthly:0});
+  // Backup/DR/Capacity - subscription (monthly)
+  if(dpSubscription>0){
+    if(dpState.backup>0)dpItems.push({resource:'Backup',qty:dpState.backup,unit:'units',subscription:dpEurToDisplay(dpState.backup*DP_PRICE.backup),burst:0});
+    if(dpState.backupCapacity>0)dpItems.push({resource:'Backup Capacity',qty:dpState.backupCapacity,unit:'GB',subscription:dpEurToDisplay(dpState.backupCapacity*DP_PRICE.backupCapacity),burst:0});
+    if(dpState.dr>0)dpItems.push({resource:'DR',qty:dpState.dr,unit:'units',subscription:dpEurToDisplay(dpState.dr*DP_PRICE.dr),burst:0});
+    if(dpState.drCapacity>0)dpItems.push({resource:'DR Capacity',qty:dpState.drCapacity,unit:'GB',subscription:dpEurToDisplay(dpState.drCapacity*DP_PRICE.drCapacity),burst:0});
   }
 
   // VM details
@@ -1103,9 +1423,12 @@ function collectQuoteData(){
     paas:{pricingType:'burst',items:paasItems,total:paasT},
     omnifabric:{pricingType:'burst',items:ofItems,total:ofT},
     taas:{pricingType:'burst',items:taasItems,total:taasT},
+    kubernetes:{pricingType:'burst',nodes:k8sState.nodes,vcpu:k8sState.vcpu,ram:k8sState.ram,storageGB:k8sState.storageGB,total:calcK8s()},
+    dataProtection:{pricingType:'mixed',upfront:dpUpfront,subscription:dpSubscription,items:dpItems},
     totals:{
       subscriptionMonthly:grandSubTotal,
       burstMonthly:grandBurstTotal,
+      upfront:csSmart.upfront||0,
       grandTotalMonthly:grandTotal,
       commitmentOptions:{
         monthly:{discount:'0%',subscriptionMo:grandSubTotal,burstMo:grandBurstTotal,totalMo:grandTotal,annualTotal:grandTotal*12},
@@ -1239,10 +1562,36 @@ function exportPDF(){
     html+='</table>';
   }
 
+  // Kubernetes section in PDF
+  var k8sT=calcK8s();
+  if(k8sT>0){
+    html+='<h2>Kubernetes — Burst</h2>';
+    html+='<table><tr><th>Resource</th><th>Config</th><th class="orange">Burst/mo</th></tr>';
+    var k8sCompMo=k8sState.nodes*((k8sState.vcpu*K8S_VCPU_PRICE_HR)+(k8sState.ram*K8S_RAM_PRICE_HR))*730;
+    var k8sStoMo=k8sState.storageGB*K8S_STORAGE_PRICE_MO;
+    html+='<tr><td>Worker Nodes (Compute)</td><td>'+k8sState.nodes+' node(s) &times; '+k8sState.vcpu+' vCPU / '+k8sState.ram+' GB RAM</td><td class="orange">'+fmt(k8sCompMo)+'</td></tr>';
+    if(k8sStoMo>0)html+='<tr><td>Persistent Storage</td><td>'+k8sState.storageGB+' GB</td><td class="orange">'+fmt(k8sStoMo)+'</td></tr>';
+    html+='<tr class="total-row"><td>Kubernetes Total</td><td></td><td class="orange">'+fmt(k8sT)+'</td></tr>';
+    html+='</table>';
+  }
+
+  // Data Protection section in PDF (burst only)
+  var dpTpdf=calcDp();
+  if(dpTpdf>0){
+    html+='<h2>Data Protection \u2014 Burst</h2>';
+    html+='<table><tr><th>Resource</th><th>Qty</th><th class="orange">Burst/mo</th></tr>';
+    data.dataProtection.items.forEach(function(item){
+      html+='<tr><td>'+item.resource+'</td><td>'+item.qty+' '+item.unit+'</td><td class="orange">'+fmt(item.monthly)+'</td></tr>';
+    });
+    html+='<tr class="total-row"><td>Data Protection Total</td><td></td><td class="orange">'+fmt(dpTpdf)+'</td></tr>';
+    html+='</table>';
+  }
+
   // Grand Totals (including all services)
   html+='<h2>Monthly Totals</h2><table>';
   html+='<tr><td>Subscription (Monthly)</td><td></td><td class="green">'+fmt(csSmart.subTotal)+'</td><td></td></tr>';
   html+='<tr><td>Burst (Monthly)</td><td></td><td class="orange">'+fmt(csSmart.burstTotal)+'</td><td></td></tr>';
+  if(csSmart.upfront>0){html+='<tr><td>Upfront (One-time)</td><td></td><td class="cs-green">'+fmt(csSmart.upfront)+'</td><td></td></tr>';}
   html+='<tr class="total-row"><td><strong>Grand Total (Monthly)</strong></td><td></td><td class="green"><strong>'+fmt(csSmart.total)+'</strong></td><td></td></tr>';
   html+='</table>';
 
@@ -1447,27 +1796,27 @@ async function loadQuote(id){
       renderVmTable();
     }
 
-    // Restore Object Storage
+    // Restore Object Storage — populate persistent state BEFORE rebuilding panel
     if(q.objectStorage){
       q.objectStorage.forEach(function(item){
-        var sl=$('sl_'+item.resourceKey);
-        if(sl)sl.value=item.qty||item.sizeGB||0;
+        if(item.resourceKey)objStorageState[item.resourceKey]=item.qty||item.sizeGB||0;
       });
       buildObjPanel();
     }
 
-    // Restore Network
+    // Restore Network — populate persistent state BEFORE rebuilding panel
     if(q.network){
       q.network.forEach(function(item){
         if(item.resourceKey==='tx'){
-          var sl=$('sl_tx');if(sl)sl.value=item.qty||0;
-          var qt=$('qty_tx');if(qt)qt.value=item.multiplier||1;
+          netState.tx=item.qty||0;
+          netState.txQty=item.multiplier||1;
         }else if(item.resourceKey==='vlan'){
-          var sl=$('sl_vlan');if(sl)sl.value=item.qty||0;
+          netState.vlan=item.qty||0;
         }else if(item.resourceKey){
-          var bw=$('sl_bandwidth');if(bw)bw.value=item.resourceKey;
+          netState.bandwidth=item.resourceKey;
         }
       });
+      buildNetPanel();
     }
 
     // Restore PaaS
@@ -1478,6 +1827,18 @@ async function loadQuote(id){
         if(item.resource==='Storage'){var e=$('paas_storage');if(e)e.value=item.qty||0;}
         if(item.resource==='External Traffic'){var e=$('paas_traffic');if(e)e.value=item.qty||0;}
       });
+    }
+
+    // Restore Data Protection
+    if(q.dataProtection&&q.dataProtection.items){
+      q.dataProtection.items.forEach(function(item){
+        if(item.resource==='Migration')dpState.migration=item.qty||0;
+        if(item.resource==='Backup')dpState.backup=item.qty||0;
+        if(item.resource==='Backup Capacity')dpState.backupCapacity=item.qty||0;
+        if(item.resource==='DR')dpState.dr=item.qty||0;
+        if(item.resource==='DR Capacity')dpState.drCapacity=item.qty||0;
+      });
+      buildDpPanel();
     }
 
     // Restore Omnifabric
