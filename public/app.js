@@ -433,23 +433,22 @@ var BREAKDOWN_SECTION={
   '\u2388\uFE0F Kubernetes':'k8s'
 };
 function scrollToSection(key){
-  // Special handling for nested sections - need to open parent first
-  var parentKey = null;
-  if(['vm','obj','net','dp','paas','of','taas','k8s'].includes(key)){
-    parentKey = 'cfg';
+  // In the sidebar layout, navigate to the page for the key
+  if(typeof navTo==='function'){
+    // Map cfg sub-keys to their own pages; cfg itself goes to vm
+    var pageKey=(key==='cfg')?'vm':key;
+    navTo(pageKey);
+    // Scroll the page to top
+    var main=document.getElementById('main-content');
+    if(main)main.scrollTop=0;
+    window.scrollTo(0,0);
+    return;
   }
-  
-  // Open parent section first if needed
-  if(parentKey && collapsed[parentKey]){
-    toggleSection(parentKey);
-  }
-  
-  // Open the target section if collapsed
-  if(collapsed[key]){
-    toggleSection(key);
-  }
-  
-  // Scroll to the section
+  // Fallback: legacy collapsed section behaviour
+  var parentKey=null;
+  if(['vm','obj','net','dp','paas','of','taas','k8s'].includes(key)){parentKey='cfg';}
+  if(parentKey&&collapsed[parentKey]){toggleSection(parentKey);}
+  if(collapsed[key]){toggleSection(key);}
   var el=$('section-body-'+key);
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1242,6 +1241,15 @@ function recalc(){
   if(stS)stS.textContent=fmt(csSmart.subTotal);
   if(stB)stB.textContent=fmt(csSmart.burstTotal);
   if(stC)stC.textContent=fmt(csSmart.total);
+  // Sidebar mini totals
+  var sbS=$('sidebarTotalSub'),sbB=$('sidebarTotalBurst'),sbC=$('sidebarTotalCombined');
+  if(sbS)sbS.textContent=fmt(csSmart.subTotal);
+  if(sbB)sbB.textContent=fmt(csSmart.burstTotal);
+  if(sbC)sbC.textContent=fmt(csSmart.total);
+  // VM page sub-totals
+  var vmSub=$('vmTotalSub'),vmBurst=$('vmTotalBurst');
+  if(vmSub){var vsub=0;vmLines.forEach(function(vm){var q=vm.qty||1,cpuR=cpuResForVm(vm),memR=memResForVm(vm);vsub+=q*(vm.cpu*(vm.cpuSpeed||2)*csSubPrice(cpuR)*730+vm.ram*csSubPrice(memR)*730);vm.disks.forEach(function(d){vsub+=q*d.size*csSubPrice(d.type);});});if(vmSub)vmSub.textContent=fmt(vsub);}
+  if(vmBurst){var vburst=0;vmLines.forEach(function(vm){var q=vm.qty||1,cpuR=cpuResForVm(vm),memR=memResForVm(vm);vburst+=q*(vm.cpu*(vm.cpuSpeed||2)*csBurstPrice(cpuR)*730+vm.ram*csBurstPrice(memR)*730);vm.disks.forEach(function(d){vburst+=q*d.size*csBurstPrice(d.type);});});if(vmBurst)vmBurst.textContent=fmt(vburst);}
   // Floating location info
   var fli=$('floatLocationInfo');
   if(fli&&currentLocation){
