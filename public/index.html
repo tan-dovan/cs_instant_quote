@@ -171,7 +171,7 @@
   <header class="header">
     <img src="logo-dark-bg.png" alt="CloudSigma" class="header-logo" id="headerLogo">
     <div>
-      <h1>Pricing <span>Calculator</span></h1>
+      <h1>Instant Quoting Tool (IQT)</h1>
       <p>Compare cloud costs across CloudSigma, AWS, Azure &amp; GCP in real time.</p>
     </div>
     <div class="header-right">
@@ -227,7 +227,14 @@
         </div>
         <div id="section-body-net" style="margin-top:1rem;display:none"><div id="panel-network"></div></div>
       </div>
-      <div class="resource-group">
+            <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('dp')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-dp" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>🛡️ Data Protection</h3>
+        </div>
+        <div id="section-body-dp" style="margin-top:1rem;display:none"><div id="panel-dp"></div></div>
+      </div>
+<div class="resource-group">
         <div class="section-header" onclick="toggleSection('paas')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
           <span id="section-arrow-paas" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
           <h3>☁️ PaaS</h3>
@@ -247,6 +254,13 @@
           <h3>🤖 TaaS (AI Models)</h3>
         </div>
         <div id="section-body-taas" style="margin-top:1rem;display:none"><div id="panel-taas"></div></div>
+      </div>
+      <div class="resource-group">
+        <div class="section-header" onclick="toggleSection('k8s')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+          <span id="section-arrow-k8s" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
+          <h3>⎈ Kubernetes</h3>
+        </div>
+        <div id="section-body-k8s" style="margin-top:1rem;display:none"><div id="panel-k8s"></div></div>
       </div>
     </div>
     <div class="section-total">
@@ -310,6 +324,7 @@
 
   <footer style="text-align:center;padding:2rem 0;color:var(--text-secondary);font-size:.85rem">
     Prices updated in real-time &bull; Powered by CloudSigma API &bull; All comparisons in USD
+    <span id="prFooter" style="margin-left:1rem;"></span>
   </footer>
 </div>
 <script>
@@ -331,5 +346,9 @@
 })();
 </script>
 <script src="app.js"></script>
+<script>
+// Fetch and display PR ID in footer
+document.getElementById('prFooter').textContent = window.location.href.includes('pr=') ? '(PR #' + window.location.href.split('pr=')[1].split('&')[0] + ')' : '';
+</script>
 </body>
 </html>
