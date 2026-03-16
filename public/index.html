@@ -14,74 +14,157 @@
     })();
   </script>
   <style>
-    /* CloudSigma Brand Colors */
+    /* ── Brand ── */
     :root{
       --cs-green:#00A94F;--cs-green-dark:#00853F;--cs-green-light:#44B772;
       --cs-green-bg:rgba(0,169,79,0.08);--cs-accent-orange:#E0A55A;
-      --cs-secondary-green:#73C167;--cs-light-green:#A8D59D;
+      --sidebar-w:240px;
     }
-    /* DARK theme */
     [data-theme="dark"]{
       --bg-body:#1a1d23;--bg-surface:#22262e;--bg-card:#282c34;--bg-input:#2d323b;
       --bg-header:#2d323b;--border-color:#373c46;--text-primary:#e0e4ea;
       --text-secondary:#9ca3af;--text-heading:#e0e4ea;
       --table-hover:rgba(0,169,79,0.18);--table-stripe:#252930;
-      --shadow-card:0 1px 3px rgba(0,0,0,0.2);--shadow-card-hover:0 2px 8px rgba(0,0,0,0.3);
+      --shadow-card:0 1px 3px rgba(0,0,0,.2);--shadow-card-hover:0 2px 8px rgba(0,0,0,.3);
       --green:#44B772;--red:#f87171;--orange:#fb923c;--blue:#60a5fa;
-      --logo-file:url('logo-dark-bg.png');
+      --sidebar-bg:#1e2229;--sidebar-border:#2d323b;
     }
-    /* LIGHT theme */
     [data-theme="light"]{
-      --bg-body:#f7f8f9;--bg-surface:#ffffff;--bg-card:#ffffff;--bg-input:#ffffff;
+      --bg-body:#f0f2f5;--bg-surface:#ffffff;--bg-card:#ffffff;--bg-input:#ffffff;
       --bg-header:#fafafa;--border-color:#e8e8e8;--text-primary:#4D4D4F;
       --text-secondary:#77787B;--text-heading:#4D4D4F;
       --table-hover:#d4f0e0;--table-stripe:#fafbfc;
-      --shadow-card:0 1px 3px rgba(0,0,0,0.06);--shadow-card-hover:0 2px 8px rgba(0,0,0,0.08);
+      --shadow-card:0 1px 3px rgba(0,0,0,.06);--shadow-card-hover:0 2px 8px rgba(0,0,0,.08);
       --green:#00A94F;--red:#dc2626;--orange:#d97706;--blue:#2563eb;
-      --logo-file:url('logo-white-bg.png');
+      --sidebar-bg:#ffffff;--sidebar-border:#e8e8e8;
     }
+
     *{margin:0;padding:0;box-sizing:border-box}
-    body{background:var(--bg-body);color:var(--text-primary);font-family:"Roboto","Helvetica Neue",Arial,sans-serif;line-height:1.6;font-size:14px}
+    body{background:var(--bg-body);color:var(--text-primary);font-family:"Roboto","Helvetica Neue",Arial,sans-serif;line-height:1.6;font-size:14px;display:flex;min-height:100vh}
 
-    /* Top accent bar */
-    .top-accent-bar{background:linear-gradient(135deg,#00853F 0%,#00A94F 50%,#0D8C61 100%);height:4px;min-height:4px;box-shadow:0 2px 8px rgba(0,133,63,0.2)}
+    /* ── Sidebar ── */
+    #sidebar{
+      width:var(--sidebar-w);flex-shrink:0;
+      background:var(--sidebar-bg);border-right:1px solid var(--sidebar-border);
+      display:flex;flex-direction:column;
+      position:fixed;top:0;left:0;height:100vh;
+      overflow-y:auto;z-index:200;
+      transition:transform .25s ease;
+    }
+    .sidebar-brand{
+      padding:1.25rem 1rem 1rem;border-bottom:1px solid var(--sidebar-border);
+      display:flex;flex-direction:column;align-items:flex-start;gap:.4rem;
+    }
+    .sidebar-logo{height:28px;width:auto;margin-bottom:.1rem}
+    .sidebar-title{font-size:.85rem;font-weight:700;color:var(--text-heading);letter-spacing:.01em;line-height:1.2}
+    .sidebar-commit{
+      display:inline-flex;align-items:center;gap:.3rem;
+      font-size:.65rem;font-family:monospace;
+      color:var(--text-secondary);background:var(--bg-input);
+      border:1px solid var(--border-color);border-radius:3px;
+      padding:.15rem .4rem;text-decoration:none;margin-top:.1rem;
+    }
+    .sidebar-commit:hover{color:var(--cs-green)}
+    .sidebar-commit svg{flex-shrink:0}
 
-    .container{max-width:1400px;margin:0 auto;padding:1.5rem 1rem}
-    .header{display:flex;align-items:center;gap:1.25rem;margin-bottom:2rem;flex-wrap:wrap}
-    .header-logo{height:36px;width:auto}
-    .header h1{font-size:1.8rem;font-weight:700;color:var(--text-heading)}
-    .header h1 span{color:var(--cs-green)}
-    .header p{font-size:.95rem;color:var(--text-secondary)}
-    .header-right{margin-left:auto;display:flex;align-items:center;gap:.75rem}
+    /* ── Nav ── */
+    .sidebar-nav{flex:1;padding:.5rem 0}
+    .nav-item{
+      display:flex;align-items:center;gap:.6rem;
+      padding:.55rem 1rem;font-size:.83rem;font-weight:500;
+      color:var(--text-secondary);cursor:pointer;
+      border-left:3px solid transparent;
+      transition:background .15s,color .15s,border-color .15s;
+      user-select:none;
+    }
+    .nav-item:hover{background:var(--cs-green-bg);color:var(--text-primary)}
+    .nav-item.active{
+      background:var(--cs-green-bg);color:var(--cs-green);
+      border-left-color:var(--cs-green);font-weight:700;
+    }
+    .nav-item .nav-icon{font-size:1rem;flex-shrink:0;width:20px;text-align:center}
+    .nav-section-label{
+      padding:.65rem 1rem .2rem;font-size:.63rem;font-weight:700;
+      color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;
+    }
+    .nav-sub{padding-left:2rem;font-size:.79rem}
+    .nav-badge{
+      margin-left:auto;font-size:.6rem;font-weight:700;
+      background:var(--cs-green);color:#fff;border-radius:8px;
+      padding:.1rem .4rem;min-width:18px;text-align:center;
+    }
+    .nav-badge.orange{background:var(--orange)}
 
+    /* ── Sidebar footer ── */
+    .sidebar-footer{
+      padding:.75rem 1rem;border-top:1px solid var(--sidebar-border);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+
+    /* ── Main layout ── */
+    #main-wrapper{
+      margin-left:var(--sidebar-w);flex:1;
+      display:flex;flex-direction:column;min-height:100vh;
+    }
+    #topbar{
+      background:var(--bg-card);border-bottom:1px solid var(--border-color);
+      padding:.6rem 1.5rem;display:flex;align-items:center;gap:1rem;
+      position:sticky;top:0;z-index:100;
+    }
+    #topbar-title{font-size:1rem;font-weight:700;color:var(--text-heading);flex:1}
+    #topbar-sub{font-size:.75rem;color:var(--text-secondary)}
+
+    #main-content{flex:1;padding:1.5rem}
+
+    /* ── Pages (only active shown) ── */
+    .page{display:none}
+    .page.active{display:block}
+
+    /* ── Top accent bar ── */
+    .top-accent-bar{background:linear-gradient(135deg,#00853F 0%,#00A94F 50%,#0D8C61 100%);height:4px;width:100%;position:sticky;top:0;z-index:300}
+
+    /* ── Cards ── */
     .card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow-card);transition:box-shadow .2s}
     .card:hover{box-shadow:var(--shadow-card-hover)}
     .card h2{font-size:1.05rem;margin-bottom:1rem;color:var(--cs-green);display:flex;align-items:center;gap:.5rem;font-weight:700;padding-bottom:.5rem;border-bottom:2px solid var(--cs-green)}
     .card h2 .num{background:var(--cs-green);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700}
+    .page-header{margin-bottom:1.25rem}
+    .page-header h2{font-size:1.15rem;font-weight:700;color:var(--text-heading);display:flex;align-items:center;gap:.5rem}
+    .page-header p{font-size:.82rem;color:var(--text-secondary);margin-top:.2rem}
 
+    /* ── Location ── */
     .loc-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
     select,input[type=number]{background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.4rem .5rem;color:var(--text-primary);font-size:.82rem;font-family:inherit}
     select:focus,input[type=number]:focus{outline:none;border-color:var(--cs-green);box-shadow:0 0 0 2px var(--cs-green-bg)}
     label{display:block;margin-bottom:.35rem;font-weight:500;font-size:.82rem;color:var(--text-secondary)}
     .loc-row select{width:100%}
 
+    /* ── Buttons ── */
     .btn-add{margin-top:.75rem;background:var(--cs-green-bg);color:var(--cs-green);border:1px solid var(--cs-green);border-radius:6px;padding:.5rem 1.2rem;cursor:pointer;font-weight:600;font-size:.85rem;font-family:inherit}
     .btn-add:hover{background:rgba(0,169,79,.15)}
     .btn-rm{background:var(--red);color:white;border:none;border-radius:4px;padding:.2rem .5rem;cursor:pointer;font-size:.7rem}
     .btn-rm:hover{opacity:.8}
+    .btn-primary{background:var(--cs-green);color:#fff;font-weight:600;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.85rem;font-family:inherit}
+    .btn-primary:hover{background:var(--cs-green-dark)}
+    .btn-danger{background:var(--red);color:white;font-weight:600;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.85rem;font-family:inherit}
+    .btn-export{background:linear-gradient(135deg,#00853F,#00A94F);color:#fff;font-weight:700;padding:.5rem 1.2rem;border-radius:6px;border:none;cursor:pointer;font-size:.82rem;font-family:inherit}
+    .btn-export:hover{opacity:.9}
+    .btn-disk-add{background:var(--cs-green-bg);color:var(--cs-green);border:1px solid var(--cs-green);border-radius:4px;padding:.25rem .6rem;font-size:.75rem;cursor:pointer;font-weight:600}
+    .btn-disk-add:hover{background:rgba(0,169,79,.15)}
+    .btn-disk-rm{background:var(--red);color:white;border:none;border-radius:4px;padding:.15rem .4rem;font-size:.7rem;cursor:pointer}
 
+    /* ── Summary ── */
     .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem}
     .summary-card{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:6px;padding:1.25rem;box-shadow:var(--shadow-card)}
     .summary-card h3{font-size:1rem;margin-bottom:.75rem;color:var(--cs-green);font-weight:700}
     .breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--border-color);font-size:.85rem}
     .breakdown-row:last-child{border:none}
     .breakdown-row.total{font-weight:700;font-size:.95rem;margin-top:.5rem;padding-top:.75rem;border-top:2px solid var(--cs-green)}
-    .breakdown-row.savings{color:var(--green)}
-    .breakdown-row.loss{color:var(--red)}
     .total-box{text-align:center;margin-top:1rem}
     .total-box .lbl{font-size:.8rem;color:var(--text-secondary)}
     .total-box .amt{font-size:2rem;font-weight:700}
 
+    /* ── Comparison ── */
     .comp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
     .comp-card{border:1px solid var(--border-color);border-radius:6px;padding:1rem;box-shadow:var(--shadow-card)}
     .comp-card.cloudsigma{border-color:var(--cs-green);background:var(--cs-green-bg)}
@@ -93,13 +176,7 @@
     .comp-cost{font-size:1.4rem;font-weight:700}
     .comp-savings{font-size:.8rem;margin-top:.25rem}
 
-    .admin-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.75rem;align-items:end}
-    .admin-grid select,.admin-grid input{width:100%}
-    .btn-primary{background:var(--cs-green);color:#fff;font-weight:600;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.85rem;font-family:inherit}
-    .btn-primary:hover{background:var(--cs-green-dark)}
-    .btn-danger{background:var(--red);color:white;font-weight:600;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.85rem;font-family:inherit}
-
-    /* Resource layout */
+    /* ── Resource layout ── */
     .resource-section{display:flex;flex-direction:column;gap:1.25rem}
     .resource-group{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:6px;padding:1.25rem;box-shadow:var(--shadow-card)}
     .section-header h3{color:var(--cs-green);margin:0;font-size:.95rem;font-weight:700}
@@ -135,206 +212,365 @@
     .section-total-sub{flex:1;text-align:right;font-size:1.15rem;font-weight:700;color:var(--green)}
     .section-total-burst{flex:1;text-align:right;font-size:1.15rem;font-weight:700;color:var(--orange)}
 
-    .btn-disk-add{background:var(--cs-green-bg);color:var(--cs-green);border:1px solid var(--cs-green);border-radius:4px;padding:.25rem .6rem;font-size:.75rem;cursor:pointer;font-weight:600}
-    .btn-disk-add:hover{background:rgba(0,169,79,.15)}
-    .btn-disk-rm{background:var(--red);color:white;border:none;border-radius:4px;padding:.15rem .4rem;font-size:.7rem;cursor:pointer}
+    /* ── Admin ── */
+    .admin-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.75rem;align-items:end}
+    .admin-grid select,.admin-grid input{width:100%}
 
-    .btn-export{background:linear-gradient(135deg,#00853F,#00A94F);color:#fff;font-weight:700;padding:.5rem 1.2rem;border-radius:6px;border:none;cursor:pointer;font-size:.82rem;font-family:inherit}
-    .btn-export:hover{opacity:.9}
-
-    /* Theme toggle */
-    .theme-toggle{background:var(--bg-input);border:1px solid var(--border-color);border-radius:20px;padding:3px;display:inline-flex;gap:2px}
-    .theme-toggle button{border:none;background:transparent;color:var(--text-secondary);padding:4px 10px;border-radius:16px;font-size:.75rem;cursor:pointer;font-family:inherit;transition:all .15s}
-    .theme-toggle button:hover{color:var(--text-primary);background:var(--bg-header)}
-    .theme-toggle button.active{background:var(--cs-green);color:#fff;font-weight:500}
-
-    /* Resource price table */
+    /* ── Resource price table ── */
     .res-price-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:.5rem}
     .res-price-table th{padding:.35rem .5rem;text-align:left;font-weight:600;border-bottom:2px solid var(--border-color);color:var(--text-secondary);font-size:.7rem;text-transform:uppercase}
     .res-price-table td{padding:.3rem .5rem;border-bottom:1px solid var(--border-color)}
     .res-price-table tr:hover{background:var(--table-hover)}
 
-    @media(max-width:768px){
+    /* ── Theme toggle ── */
+    .theme-toggle{background:var(--bg-input);border:1px solid var(--border-color);border-radius:20px;padding:3px;display:inline-flex;gap:2px}
+    .theme-toggle button{border:none;background:transparent;color:var(--text-secondary);padding:4px 10px;border-radius:16px;font-size:.75rem;cursor:pointer;font-family:inherit;transition:all .15s}
+    .theme-toggle button:hover{color:var(--text-primary);background:var(--bg-header)}
+    .theme-toggle button.active{background:var(--cs-green);color:#fff;font-weight:500}
+
+    /* ── Floating quote panel (right) ── */
+    #floatingTotal{position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px;max-width:280px;font-family:Roboto,sans-serif;max-height:calc(100vh - 6rem);overflow-y:auto}
+
+    /* ── Hamburger (mobile) ── */
+    #sidebarToggle{display:none;background:none;border:none;cursor:pointer;padding:.4rem;color:var(--text-primary);font-size:1.2rem}
+    #sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
+
+    /* ── Mobile ── */
+    @media(max-width:900px){
+      #sidebar{transform:translateX(-100%)}
+      #sidebar.open{transform:translateX(0)}
+      #sidebarToggle{display:block}
+      #sidebarOverlay.visible{display:block}
+      #main-wrapper{margin-left:0}
       .loc-row,.admin-grid{grid-template-columns:1fr}
       .comp-grid{grid-template-columns:1fr 1fr}
-      .vm-row-label{flex:0 0 100px}
-      .vm-row-prices{flex:0 0 150px}
-      .header{flex-direction:column;text-align:center}
-      .header-right{margin-left:0}
       #floatingTotal{display:none !important}
+    }
+    @media(max-width:480px){
+      .comp-grid{grid-template-columns:1fr}
     }
   </style>
 </head>
 <body>
-<div class="top-accent-bar"></div>
-<div class="container">
-  <header class="header">
-    <img src="logo-dark-bg.png" alt="CloudSigma" class="header-logo" id="headerLogo">
-    <div>
-      <h1>Instant Quoting Tool (IQT)</h1>
-      <p>Compare cloud costs across CloudSigma, AWS, Azure &amp; GCP in real time.</p>
-    </div>
-    <div class="header-right">
-      <a id="commitBadge" href="https://github.com/tan-dovan/cs_instant_quote/commits/main" target="_blank" rel="noopener"
-         title="View commit on GitHub"
-         style="display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-family:monospace;color:var(--text-secondary);background:var(--bg-header);border:1px solid var(--border-color);border-radius:4px;padding:.2rem .5rem;text-decoration:none;transition:color .15s">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span id="commitShort">…</span>
-      </a>
-      <div class="theme-toggle" id="themeToggle">
-        <button data-theme="light" title="Light theme">☀️</button>
-        <button data-theme="dark" class="active" title="Dark theme">🌙</button>
-      </div>
-    </div>
-  </header>
 
-  <!-- 1. Select Cloud Location -->
-  <section class="card">
-    <h2 onclick="toggleSection('loc')" style="cursor:pointer;user-select:none"><span id="section-arrow-loc" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)">▶</span><span class="num">1</span> Select Cloud Location</h2>
-    <div id="section-body-loc" style="display:none">
-    <div class="loc-row">
-      <div><label>Location</label><select id="locationSelect"></select></div>
-      <div><label>Display Currency</label><select id="currencySelect"><option value="USD">USD (US Dollar)</option></select></div>
-      <div><label>&nbsp;</label><div id="currencyInfo" style="padding-top:.3rem;font-size:.82rem;color:var(--text-secondary)">—</div></div>
-    </div>
-    <div id="resourcePriceTable"></div>
-    </div>
-  </section>
-
-  <!-- 2. Configure Resources -->
-  <section class="card">
-    <h2 style="cursor:pointer;user-select:none"><span id="section-arrow-cfg" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)" onclick="toggleSection('cfg')">▶</span><span onclick="toggleSection('cfg')"><span class="num">2</span> Configure Resources</span>
-
-    </h2>
-    <div id="section-body-cfg" style="display:none">
-    <div class="price-col-headers" style="max-width:200px;margin-left:auto">
-      <div class="price-col-hdr sub">📗 Subscription</div>
-      <div class="price-col-hdr burst">📙 Burst</div>
-    </div>
-    <div class="resource-section">
-      <div class="resource-group">
-        <div class="section-header" onclick="toggleSection('vm')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-vm" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>🖥️ Virtual Machines</h3>
-        </div>
-        <div id="section-body-vm" style="margin-top:1rem;display:none"><div id="panel-vm"></div></div>
-      </div>
-      <div class="resource-group">
-        <div class="section-header" onclick="toggleSection('obj')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-obj" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>🗄️ Object Storage</h3>
-        </div>
-        <div id="section-body-obj" style="margin-top:1rem;display:none"><div id="panel-objstorage"></div></div>
-      </div>
-      <div class="resource-group">
-        <div class="section-header" onclick="toggleSection('net')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-net" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>🌐 Network</h3>
-        </div>
-        <div id="section-body-net" style="margin-top:1rem;display:none"><div id="panel-network"></div></div>
-      </div>
-            <div class="resource-group">
-        <div class="section-header" onclick="toggleSection('dp')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-dp" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>🛡️ Data Protection</h3>
-        </div>
-        <div id="section-body-dp" style="margin-top:1rem;display:none"><div id="panel-dp"></div></div>
-      </div>
-<div class="resource-group">
-        <div class="section-header" onclick="toggleSection('paas')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-paas" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>☁️ PaaS</h3>
-        </div>
-        <div id="section-body-paas" style="margin-top:1rem;display:none"><div id="panel-paas"></div></div>
-      </div>
-      <div class="resource-group">
-        <div class="section-header" onclick="toggleSection('of')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-of" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>🗄️ Omnifabric</h3>
-        </div>
-        <div id="section-body-of" style="margin-top:1rem;display:none"><div id="ofPanel"></div></div>
-      </div>
-      <div class="resource-group">
-        <div class="section-header" onclick="toggleSection('taas')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-taas" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>🤖 TaaS (AI Models)</h3>
-        </div>
-        <div id="section-body-taas" style="margin-top:1rem;display:none"><div id="panel-taas"></div></div>
-      </div>
-      <div class="resource-group">
-        <div class="section-header" onclick="toggleSection('k8s')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-          <span id="section-arrow-k8s" style="font-size:.7rem;color:var(--text-secondary)">▶</span>
-          <h3>⎈ Kubernetes</h3>
-        </div>
-        <div id="section-body-k8s" style="margin-top:1rem;display:none"><div id="panel-k8s"></div></div>
-      </div>
-    </div>
-    <div class="section-total">
-      <div class="section-total-label">Monthly Total</div>
-      <div class="section-total-values" style="display:flex;gap:1.5rem;align-items:baseline;flex-wrap:wrap">
-        <div style="text-align:center"><div style="font-size:.65rem;color:var(--green);text-transform:uppercase;letter-spacing:.03em">Subscription</div><div class="section-total-sub" id="sectionTotalSub" style="font-size:1.1rem;font-weight:700;color:var(--green)">$0.00</div></div>
-        <div style="text-align:center"><div style="font-size:.65rem;color:var(--orange);text-transform:uppercase;letter-spacing:.03em">Burst</div><div class="section-total-burst" id="sectionTotalBurst" style="font-size:1.1rem;font-weight:700;color:var(--orange)">$0.00</div></div>
-        <div style="text-align:center"><div style="font-size:.65rem;color:var(--cs-green);text-transform:uppercase;letter-spacing:.03em">Total</div><div id="sectionTotalCombined" style="font-size:1.3rem;font-weight:700;color:var(--cs-green)">$0.00</div></div>
-      </div>
-    </div>
-    </div>
-  </section>
-
-  <!-- 3. Summary -->
-  <section class="card">
-    <h2 onclick="toggleSection('sum')" style="cursor:pointer;user-select:none"><span id="section-arrow-sum" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)">▶</span><span class="num">3</span> Summary &amp; Price Breakdown</h2>
-    <div id="section-body-sum" style="display:none">
-    <div class="summary-grid">
-      <div class="summary-card">
-        <h3>☁️ CloudSigma (Subscription)</h3>
-        <div id="csBreakdown"></div>
-        <div class="total-box"><div class="lbl">Monthly Total</div><div class="amt" id="csTotal">$0.00</div></div>
-      </div>
-      <div class="summary-card" id="bestAlternativeCard">
-        <h3>🏆 Best Alternative</h3>
-        <div id="bestBreakdown"></div>
-        <div class="total-box"><div class="lbl">Monthly Total</div><div class="amt" id="bestTotal">$0.00</div></div>
-      </div>
-    </div>
-    </div>
-  </section>
-
-  <!-- 4. Comparison -->
-  <section class="card">
-    <h2 onclick="toggleSection('cmp')" style="cursor:pointer;user-select:none"><span id="section-arrow-cmp" style="font-size:.7rem;margin-right:.3rem;color:var(--text-secondary)">▶</span><span class="num">4</span> Provider Comparison</h2>
-    <div id="section-body-cmp" style="display:none">
-    <div class="comp-grid" id="compGrid"></div>
-    </div>
-  </section>
-
-
-
-  <!-- Floating Total Box -->
-  <div id="floatingTotal" style="position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px;max-width:280px;font-family:Roboto,sans-serif;max-height:calc(100vh - 6rem);overflow-y:auto">
-    <div style="font-size:.7rem;font-weight:700;color:var(--cs-green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem">💰 Monthly Quote</div>
-    <div id="floatLocationInfo" style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.5rem"></div>
-    <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem">
-      <div><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Customer</label><input type="text" id="quoteCustomer" placeholder="Customer name" style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.25rem .4rem;color:var(--text-primary);font-size:.78rem;font-family:inherit"></div>
-      <div><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Opportunity Name</label><input type="text" id="quoteOpportunity" placeholder="Opportunity name" style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.25rem .4rem;color:var(--text-primary);font-size:.78rem;font-family:inherit"></div>
-      <div><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Opportunity ID</label><input type="text" id="quoteOpportunityId" readonly style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.25rem .4rem;color:var(--cs-green);font-size:.72rem;font-family:monospace;opacity:.85;cursor:default"></div>
-    </div>
-    <div id="floatBreakdown" style="display:flex;flex-direction:column;gap:.3rem"></div>
-    <div style="margin-top:.6rem"><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Notes / Free Text</label><textarea id="quoteNotes" placeholder="Add notes to include in the quote..." rows="3" style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.3rem .4rem;color:var(--text-primary);font-size:.78rem;font-family:inherit;resize:vertical"></textarea></div>
-    <button class="btn-export" onclick="exportPDF()" style="width:100%;margin-top:.8rem;font-size:.78rem;padding:.45rem 0">📄 Export Quote (PDF)</button>
-    <button class="btn-export" onclick="exportJSON()" style="width:100%;margin-top:.4rem;font-size:.78rem;padding:.45rem 0;background:linear-gradient(135deg,#2563eb,#3b82f6)">📋 Export Quote (JSON)</button>
-    <button class="btn-export" onclick="saveQuote()" id="btnSaveQuote" style="width:100%;margin-top:.4rem;font-size:.78rem;padding:.45rem 0;background:linear-gradient(135deg,#059669,#10b981)">💾 Save Quote</button>
-    <div id="saveStatus" style="font-size:.7rem;margin-top:.3rem;text-align:center"></div>
-    <button class="btn-export" onclick="loadQuoteList()" style="width:100%;margin-top:.4rem;font-size:.78rem;padding:.45rem 0;background:linear-gradient(135deg,#7c3aed,#8b5cf6)">📂 Load Quote</button>
-    <div id="quoteListPanel" style="display:none;margin-top:.5rem;max-height:250px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input)"></div>
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="sidebar-brand">
+    <img src="logo-dark-bg.png" alt="CloudSigma" class="sidebar-logo" id="sidebarLogo">
+    <div class="sidebar-title">Instant Quoting Tool</div>
+    <a id="commitBadge" href="https://github.com/tan-dovan/cs_instant_quote/commits/main" target="_blank" rel="noopener" class="sidebar-commit" title="View commit on GitHub">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span id="commitShort">…</span>
+    </a>
   </div>
 
-  <footer style="text-align:center;padding:2rem 0;color:var(--text-secondary);font-size:.85rem">
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Setup</div>
+    <div class="nav-item active" data-page="loc" onclick="navTo('loc')">
+      <span class="nav-icon">📍</span> Select Location
+    </div>
+
+    <div class="nav-section-label">Configure</div>
+    <div class="nav-item" data-page="vm" onclick="navTo('vm')">
+      <span class="nav-icon">🖥️</span> Virtual Machines
+    </div>
+    <div class="nav-item" data-page="obj" onclick="navTo('obj')">
+      <span class="nav-icon">🗄️</span> Object Storage
+    </div>
+    <div class="nav-item" data-page="net" onclick="navTo('net')">
+      <span class="nav-icon">🌐</span> Network
+    </div>
+    <div class="nav-item" data-page="dp" onclick="navTo('dp')">
+      <span class="nav-icon">🛡️</span> Data Protection
+    </div>
+    <div class="nav-item" data-page="paas" onclick="navTo('paas')">
+      <span class="nav-icon">☁️</span> PaaS
+    </div>
+    <div class="nav-item" data-page="of" onclick="navTo('of')">
+      <span class="nav-icon">🔗</span> Omnifabric
+    </div>
+    <div class="nav-item" data-page="taas" onclick="navTo('taas')">
+      <span class="nav-icon">🤖</span> TaaS (AI Models)
+    </div>
+    <div class="nav-item" data-page="k8s" onclick="navTo('k8s')">
+      <span class="nav-icon">⎈</span> Kubernetes
+    </div>
+
+    <div class="nav-section-label">Results</div>
+    <div class="nav-item" data-page="sum" onclick="navTo('sum')">
+      <span class="nav-icon">📊</span> Summary
+    </div>
+    <div class="nav-item" data-page="cmp" onclick="navTo('cmp')">
+      <span class="nav-icon">⚖️</span> Provider Comparison
+    </div>
+    <div class="nav-item" data-page="prices" onclick="navTo('prices')">
+      <span class="nav-icon">💲</span> Price Table
+    </div>
+  </div>
+
+  <!-- Mini totals in sidebar -->
+  <div style="padding:.75rem 1rem;border-top:1px solid var(--sidebar-border);font-size:.75rem">
+    <div style="color:var(--text-secondary);font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Monthly Total</div>
+    <div style="display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap">
+      <div><span style="color:var(--green);font-weight:700;font-size:.9rem" id="sidebarTotalSub">$0.00</span><span style="color:var(--text-secondary);font-size:.6rem"> sub</span></div>
+      <div><span style="color:var(--orange);font-weight:700;font-size:.9rem" id="sidebarTotalBurst">$0.00</span><span style="color:var(--text-secondary);font-size:.6rem"> burst</span></div>
+    </div>
+    <div style="color:var(--cs-green);font-weight:700;font-size:1.1rem;margin-top:.1rem" id="sidebarTotalCombined">$0.00</div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="theme-toggle" id="themeToggle">
+      <button data-theme="light" title="Light">☀️</button>
+      <button data-theme="dark" class="active" title="Dark">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Sidebar overlay (mobile) -->
+<div id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- Main wrapper -->
+<div id="main-wrapper">
+  <div class="top-accent-bar"></div>
+
+  <!-- Topbar -->
+  <div id="topbar">
+    <button id="sidebarToggle" onclick="openSidebar()" title="Menu">☰</button>
+    <div>
+      <div id="topbar-title">Select Location</div>
+      <div id="topbar-sub" style="font-size:.72rem;color:var(--text-secondary)">CloudSigma Instant Quoting Tool</div>
+    </div>
+  </div>
+
+  <!-- Pages -->
+  <div id="main-content">
+
+    <!-- ── Location ── -->
+    <div class="page active" id="page-loc">
+      <div class="page-header">
+        <h2>📍 Select Cloud Location</h2>
+        <p>Choose a CloudSigma location to load real-time pricing.</p>
+      </div>
+      <div class="card">
+        <div class="loc-row">
+          <div><label>Location</label><select id="locationSelect"></select></div>
+          <div><label>Display Currency</label><select id="currencySelect"><option value="USD">USD (US Dollar)</option></select></div>
+          <div><label>&nbsp;</label><div id="currencyInfo" style="padding-top:.3rem;font-size:.82rem;color:var(--text-secondary)">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Virtual Machines ── -->
+    <div class="page" id="page-vm">
+      <div class="page-header">
+        <h2>🖥️ Virtual Machines</h2>
+        <p>Configure VM compute, storage, IPs, GPUs and licenses.</p>
+      </div>
+      <div class="card">
+        <div class="price-col-headers" style="max-width:200px;margin-left:auto">
+          <div class="price-col-hdr sub">📗 Subscription</div>
+          <div class="price-col-hdr burst">📙 Burst</div>
+        </div>
+        <div id="panel-vm"></div>
+        <div class="section-total">
+          <div class="section-total-label">VM Total</div>
+          <div class="section-total-values" style="display:flex;gap:1.5rem;align-items:baseline;flex-wrap:wrap">
+            <div style="text-align:center"><div style="font-size:.65rem;color:var(--green);text-transform:uppercase;letter-spacing:.03em">Sub</div><div id="vmTotalSub" style="font-size:1rem;font-weight:700;color:var(--green)">$0.00</div></div>
+            <div style="text-align:center"><div style="font-size:.65rem;color:var(--orange);text-transform:uppercase;letter-spacing:.03em">Burst</div><div id="vmTotalBurst" style="font-size:1rem;font-weight:700;color:var(--orange)">$0.00</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Object Storage ── -->
+    <div class="page" id="page-obj">
+      <div class="page-header">
+        <h2>🗄️ Object Storage</h2>
+        <p>S3-compatible object storage: HDD, NVMe, and caching tiers.</p>
+      </div>
+      <div class="card">
+        <div class="price-col-headers" style="max-width:200px;margin-left:auto">
+          <div class="price-col-hdr sub">📗 Subscription</div>
+          <div class="price-col-hdr burst">📙 Burst</div>
+        </div>
+        <div id="panel-objstorage"></div>
+      </div>
+    </div>
+
+    <!-- ── Network ── -->
+    <div class="page" id="page-net">
+      <div class="page-header">
+        <h2>🌐 Network</h2>
+        <p>Outbound traffic, bandwidth packages and VLANs.</p>
+      </div>
+      <div class="card">
+        <div class="price-col-headers" style="max-width:200px;margin-left:auto">
+          <div class="price-col-hdr sub">📗 Subscription</div>
+          <div class="price-col-hdr burst">📙 Burst</div>
+        </div>
+        <div id="panel-network"></div>
+      </div>
+    </div>
+
+    <!-- ── Data Protection ── -->
+    <div class="page" id="page-dp">
+      <div class="page-header">
+        <h2>🛡️ Data Protection</h2>
+        <p>Migration, backup, disaster recovery services.</p>
+      </div>
+      <div class="card">
+        <div id="panel-dp"></div>
+      </div>
+    </div>
+
+    <!-- ── PaaS ── -->
+    <div class="page" id="page-paas">
+      <div class="page-header">
+        <h2>☁️ PaaS (Cloudlets)</h2>
+        <p>Platform as a Service — dynamic and static cloudlets.</p>
+      </div>
+      <div class="card">
+        <div id="panel-paas"></div>
+      </div>
+    </div>
+
+    <!-- ── Omnifabric ── -->
+    <div class="page" id="page-of">
+      <div class="page-header">
+        <h2>🔗 Omnifabric</h2>
+        <p>MatrixOne Intelligence compute and storage.</p>
+      </div>
+      <div class="card">
+        <div id="ofPanel"></div>
+      </div>
+    </div>
+
+    <!-- ── TaaS ── -->
+    <div class="page" id="page-taas">
+      <div class="page-header">
+        <h2>🤖 TaaS (AI Models)</h2>
+        <p>Token-based AI model inference pricing.</p>
+      </div>
+      <div class="card">
+        <div id="panel-taas"></div>
+      </div>
+    </div>
+
+    <!-- ── Kubernetes ── -->
+    <div class="page" id="page-k8s">
+      <div class="page-header">
+        <h2>⎈ Kubernetes</h2>
+        <p>Managed Kubernetes cluster — worker nodes and persistent storage.</p>
+      </div>
+      <div class="card">
+        <div id="panel-k8s"></div>
+      </div>
+    </div>
+
+    <!-- ── Summary ── -->
+    <div class="page" id="page-sum">
+      <div class="page-header">
+        <h2>📊 Summary &amp; Price Breakdown</h2>
+        <p>CloudSigma total vs best alternative provider.</p>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <h3>☁️ CloudSigma (Subscription)</h3>
+          <div id="csBreakdown"></div>
+          <div class="total-box"><div class="lbl">Monthly Total</div><div class="amt" id="csTotal">$0.00</div></div>
+        </div>
+        <div class="summary-card" id="bestAlternativeCard">
+          <h3>🏆 Best Alternative</h3>
+          <div id="bestBreakdown"></div>
+          <div class="total-box"><div class="lbl">Monthly Total</div><div class="amt" id="bestTotal">$0.00</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Comparison ── -->
+    <div class="page" id="page-cmp">
+      <div class="page-header">
+        <h2>⚖️ Provider Comparison</h2>
+        <p>Side-by-side monthly cost vs AWS, Azure, GCP.</p>
+      </div>
+      <div class="card">
+        <div class="comp-grid" id="compGrid"></div>
+      </div>
+    </div>
+
+    <!-- ── Price Table ── -->
+    <div class="page" id="page-prices">
+      <div class="page-header">
+        <h2>💲 Price Table</h2>
+        <p>All CloudSigma resource unit prices for the selected location.</p>
+      </div>
+      <div class="card">
+        <div id="resourcePriceTable"></div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+
+  <footer style="text-align:center;padding:1.5rem 0;color:var(--text-secondary);font-size:.8rem;border-top:1px solid var(--border-color);margin:0 1.5rem">
     Prices updated in real-time &bull; Powered by CloudSigma API &bull; All comparisons in USD
-    <span id="prFooter" style="margin-left:1rem;"></span>
+    <span id="prFooter" style="margin-left:.75rem"></span>
   </footer>
+</div><!-- /main-wrapper -->
+
+<!-- Floating quote panel -->
+<div id="floatingTotal" style="position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px;max-width:280px;font-family:Roboto,sans-serif;max-height:calc(100vh - 6rem);overflow-y:auto">
+  <div style="font-size:.7rem;font-weight:700;color:var(--cs-green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem">💰 Monthly Quote</div>
+  <div id="floatLocationInfo" style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.5rem"></div>
+  <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem">
+    <div><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Customer</label><input type="text" id="quoteCustomer" placeholder="Customer name" style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.25rem .4rem;color:var(--text-primary);font-size:.78rem;font-family:inherit"></div>
+    <div><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Opportunity Name</label><input type="text" id="quoteOpportunity" placeholder="Opportunity name" style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.25rem .4rem;color:var(--text-primary);font-size:.78rem;font-family:inherit"></div>
+    <div><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Opportunity ID</label><input type="text" id="quoteOpportunityId" readonly style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.25rem .4rem;color:var(--cs-green);font-size:.72rem;font-family:monospace;opacity:.85;cursor:default"></div>
+  </div>
+  <div id="floatBreakdown" style="display:flex;flex-direction:column;gap:.3rem"></div>
+  <div style="margin-top:.6rem"><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Notes / Free Text</label><textarea id="quoteNotes" placeholder="Add notes..." rows="3" style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.3rem .4rem;color:var(--text-primary);font-size:.78rem;font-family:inherit;resize:vertical"></textarea></div>
+  <button class="btn-export" onclick="exportPDF()" style="width:100%;margin-top:.8rem;font-size:.78rem;padding:.45rem 0">📄 Export Quote (PDF)</button>
+  <button class="btn-export" onclick="exportJSON()" style="width:100%;margin-top:.4rem;font-size:.78rem;padding:.45rem 0;background:linear-gradient(135deg,#2563eb,#3b82f6)">📋 Export Quote (JSON)</button>
+  <button class="btn-export" onclick="saveQuote()" id="btnSaveQuote" style="width:100%;margin-top:.4rem;font-size:.78rem;padding:.45rem 0;background:linear-gradient(135deg,#059669,#10b981)">💾 Save Quote</button>
+  <div id="saveStatus" style="font-size:.7rem;margin-top:.3rem;text-align:center"></div>
+  <button class="btn-export" onclick="loadQuoteList()" style="width:100%;margin-top:.4rem;font-size:.78rem;padding:.45rem 0;background:linear-gradient(135deg,#7c3aed,#8b5cf6)">📂 Load Quote</button>
+  <div id="quoteListPanel" style="display:none;margin-top:.5rem;max-height:250px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input)"></div>
 </div>
+
+<!-- Hidden legacy section wrappers app.js still references via section-body-* IDs -->
+<!-- These are kept as zero-size hidden containers so app.js's collapsed/toggleSection logic keeps working -->
+<div style="display:none">
+  <div id="section-body-loc"></div>
+  <div id="section-body-cfg"></div>
+  <div id="section-body-vm"></div>
+  <div id="section-body-obj"></div>
+  <div id="section-body-net"></div>
+  <div id="section-body-dp"></div>
+  <div id="section-body-paas"></div>
+  <div id="section-body-of"></div>
+  <div id="section-body-taas"></div>
+  <div id="section-body-k8s"></div>
+  <div id="section-body-sum"></div>
+  <div id="section-body-cmp"></div>
+  <div id="section-arrow-loc"></div>
+  <div id="section-arrow-cfg"></div>
+  <div id="section-arrow-vm"></div>
+  <div id="section-arrow-obj"></div>
+  <div id="section-arrow-net"></div>
+  <div id="section-arrow-dp"></div>
+  <div id="section-arrow-paas"></div>
+  <div id="section-arrow-of"></div>
+  <div id="section-arrow-taas"></div>
+  <div id="section-arrow-k8s"></div>
+  <div id="section-arrow-sum"></div>
+  <div id="section-arrow-cmp"></div>
+  <!-- Legacy collapse state values — always "open" in new layout -->
+  <div id="sectionTotalSub"></div>
+  <div id="sectionTotalBurst"></div>
+  <div id="sectionTotalCombined"></div>
+</div>
+
 <script>
-// Theme toggle
+// ── Theme ──────────────────────────────────────────────────────────────
 (function(){
   var t=localStorage.getItem('cs-theme')||'dark';
   document.querySelectorAll('.theme-toggle button').forEach(function(btn){
@@ -346,32 +582,105 @@
     localStorage.setItem('cs-theme',theme);
     document.documentElement.setAttribute('data-theme',theme);
     document.querySelectorAll('.theme-toggle button').forEach(function(b){b.classList.toggle('active',b.dataset.theme===theme);});
-    // Swap logo
-    document.getElementById('headerLogo').src=theme==='dark'?'logo-dark-bg.png':'logo-white-bg.png';
+    document.getElementById('sidebarLogo').src=theme==='dark'?'logo-dark-bg.png':'logo-white-bg.png';
   });
+  // Init logo
+  document.getElementById('sidebarLogo').src=t==='dark'?'logo-dark-bg.png':'logo-white-bg.png';
 })();
+
+// ── Sidebar nav ────────────────────────────────────────────────────────
+var PAGE_TITLES={
+  loc:'Select Location',
+  vm:'Virtual Machines',
+  obj:'Object Storage',
+  net:'Network',
+  dp:'Data Protection',
+  paas:'PaaS (Cloudlets)',
+  of:'Omnifabric',
+  taas:'TaaS (AI Models)',
+  k8s:'Kubernetes',
+  sum:'Summary & Breakdown',
+  cmp:'Provider Comparison',
+  prices:'Price Table'
+};
+
+var _currentPage='loc';
+function navTo(pageId){
+  // Hide all pages
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  // Show target
+  var p=document.getElementById('page-'+pageId);
+  if(p)p.classList.add('active');
+  // Update nav active state
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    n.classList.toggle('active',n.getAttribute('data-page')===pageId);
+  });
+  // Update topbar title
+  var tt=document.getElementById('topbar-title');
+  if(tt)tt.textContent=PAGE_TITLES[pageId]||pageId;
+  _currentPage=pageId;
+  // Close sidebar on mobile
+  closeSidebar();
+  // Persist
+  try{sessionStorage.setItem('iqt-page',pageId);}catch(e){}
+}
+window.navTo=navTo;
+
+// Restore last page
+(function(){
+  var last;
+  try{last=sessionStorage.getItem('iqt-page');}catch(e){}
+  if(last&&document.getElementById('page-'+last))navTo(last);
+})();
+
+// ── Mobile sidebar ─────────────────────────────────────────────────────
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('visible');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('visible');
+}
+window.openSidebar=openSidebar;
+window.closeSidebar=closeSidebar;
+
+// ── Sidebar totals sync ────────────────────────────────────────────────
+// Mirror recalc totals to sidebar mini display
+var _origRecalcDone=false;
+function syncSidebarTotals(){
+  var sub=document.getElementById('sectionTotalSub');
+  var burst=document.getElementById('sectionTotalBurst');
+  var combined=document.getElementById('sectionTotalCombined');
+  var ss=document.getElementById('sidebarTotalSub');
+  var sb=document.getElementById('sidebarTotalBurst');
+  var sc=document.getElementById('sidebarTotalCombined');
+  if(ss&&sub)ss.textContent=sub.textContent;
+  if(sb&&burst)sb.textContent=burst.textContent;
+  if(sc&&combined)sc.textContent=combined.textContent;
+}
+// Poll every 300ms to sync (lightweight, no DOM mutation observer needed)
+setInterval(syncSidebarTotals,300);
 </script>
 <script src="app.js"></script>
 <script>
-// Fetch and display PR ID in footer
-document.getElementById('prFooter').textContent = window.location.href.includes('pr=') ? '(PR #' + window.location.href.split('pr=')[1].split('&')[0] + ')' : '';
+// ── PR footer ──────────────────────────────────────────────────────────
+document.getElementById('prFooter').textContent=window.location.href.includes('pr=')?'(PR #'+window.location.href.split('pr=')[1].split('&')[0]+')':'';
 
-// Fetch git commit info and display in header badge
+// ── Git commit badge ───────────────────────────────────────────────────
 (function(){
   fetch('/api/git-info')
     .then(function(r){return r.json();})
     .then(function(g){
-      var el = document.getElementById('commitShort');
-      var badge = document.getElementById('commitBadge');
-      if(el && g.short && g.short !== 'unknown'){
-        el.textContent = g.short;
-        if(badge) badge.href = 'https://github.com/tan-dovan/cs_instant_quote/commit/' + g.sha;
-        if(badge) badge.title = g.message + '\n' + g.date;
-      } else if(el){
-        el.textContent = 'dev';
-      }
+      var el=document.getElementById('commitShort');
+      var badge=document.getElementById('commitBadge');
+      if(el&&g.short&&g.short!=='unknown'){
+        el.textContent=g.short;
+        if(badge)badge.href='https://github.com/tan-dovan/cs_instant_quote/commit/'+g.sha;
+        if(badge)badge.title=g.message+'\n'+g.date;
+      }else if(el){el.textContent='dev';}
     })
-    .catch(function(){ var el=document.getElementById('commitShort'); if(el)el.textContent='dev'; });
+    .catch(function(){var el=document.getElementById('commitShort');if(el)el.textContent='dev';});
 })();
 </script>
 </body>
