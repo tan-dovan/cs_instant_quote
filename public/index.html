@@ -229,7 +229,8 @@
     .theme-toggle button.active{background:var(--cs-green);color:#fff;font-weight:500}
 
     /* ── Floating quote panel (right) ── */
-    #floatingTotal{position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px;max-width:280px;font-family:Roboto,sans-serif;max-height:calc(100vh - 6rem);overflow-y:auto}
+    #floatingTotal{position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:.6rem 1rem 1rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px;max-width:280px;font-family:Roboto,sans-serif;max-height:calc(100vh - 6rem);overflow-y:hidden}
+    #floatBody{max-height:calc(100vh - 10rem);overflow-y:auto}
 
     /* ── Quote cards ── */
     .quote-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:1rem 1.25rem;box-shadow:var(--shadow-card);transition:box-shadow .15s}
@@ -263,6 +264,64 @@
     #sidebarToggle{display:none;background:none;border:none;cursor:pointer;padding:.4rem;color:var(--text-primary);font-size:1.2rem}
     #sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
 
+    /* ── Location bar (persistent) ── */
+    #locBar{
+      background:var(--bg-header);border-bottom:1px solid var(--border-color);
+      padding:.45rem 1.5rem;display:flex;align-items:center;gap:1.25rem;
+      flex-wrap:wrap;position:sticky;top:0;z-index:90;
+    }
+    #locBar label{margin:0;font-size:.75rem;white-space:nowrap;color:var(--text-secondary)}
+    #locBar select{padding:.28rem .45rem;font-size:.8rem}
+    #locBar #currencyInfo{font-size:.75rem;color:var(--text-secondary);white-space:nowrap}
+    #locBar .locbar-group{display:flex;align-items:center;gap:.45rem}
+
+    /* ── Float drag handle ── */
+    #floatHandle{
+      display:flex;align-items:center;gap:.4rem;
+      padding:.2rem 0 .4rem;margin-bottom:.3rem;
+      border-bottom:1px solid var(--border-color);
+      cursor:grab;user-select:none;
+    }
+    #floatHandle:active{cursor:grabbing}
+    #floatHandle .grip{color:var(--text-secondary);font-size:.9rem;flex:1}
+    #floatHandle .float-title{font-size:.7rem;font-weight:700;color:var(--cs-green);text-transform:uppercase;letter-spacing:.05em}
+    #floatCollapseBtn{background:none;border:1px solid var(--border-color);border-radius:3px;color:var(--text-secondary);cursor:pointer;font-size:.75rem;padding:0 .3rem;line-height:1.4}
+    #floatCollapseBtn:hover{color:var(--text-primary);border-color:var(--text-secondary)}
+    #floatCloseBtn2{background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:.9rem;padding:0 .15rem;line-height:1}
+    #floatCloseBtn2:hover{color:var(--red)}
+    #floatBody{transition:max-height .2s ease,opacity .2s ease;overflow:hidden}
+    #floatBody.collapsed{max-height:0!important;opacity:0;pointer-events:none}
+
+    /* ── Reopen floating panel button ── */
+    #floatShowBtn{
+      position:fixed;right:1rem;bottom:5rem;
+      background:var(--cs-green);color:#fff;
+      border:none;border-radius:50%;width:44px;height:44px;
+      font-size:1.25rem;cursor:pointer;z-index:999;
+      box-shadow:0 2px 12px rgba(0,0,0,.3);
+      display:none;align-items:center;justify-content:center;
+    }
+    #floatShowBtn:hover{background:var(--cs-green-dark)}
+    @media(max-width:900px){#floatShowBtn{display:none!important}}
+
+    /* ── Admin dashboard ── */
+    .dash-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
+    .dash-kpi-card{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:6px;padding:.9rem 1rem;text-align:center;box-shadow:var(--shadow-card)}
+    .dash-kpi-val{font-size:1.4rem;font-weight:700;color:var(--cs-green)}
+    .dash-kpi-lbl{font-size:.7rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-top:.2rem}
+    .dash-charts{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem}
+    .dash-chart-card{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:6px;padding:.9rem 1rem;box-shadow:var(--shadow-card)}
+    .dash-chart-title{font-size:.8rem;font-weight:700;color:var(--text-heading);margin-bottom:.65rem;text-transform:uppercase;letter-spacing:.04em}
+    .chart-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;font-size:.75rem}
+    .chart-label{flex:0 0 130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary)}
+    .chart-bar-wrap{flex:1;background:var(--bg-input);border-radius:3px;height:10px;overflow:hidden}
+    .chart-bar{height:100%;border-radius:3px;min-width:2px;background:var(--cs-green)}
+    .chart-val{flex:0 0 80px;text-align:right;font-weight:600;color:var(--text-primary);font-variant-numeric:tabular-nums}
+    @media(max-width:900px){
+      .dash-kpi{grid-template-columns:1fr 1fr}
+      .dash-charts{grid-template-columns:1fr}
+    }
+
     /* ── Mobile ── */
     @media(max-width:900px){
       #sidebar{transform:translateX(-100%)}
@@ -293,12 +352,15 @@
   </div>
 
   <div class="sidebar-nav">
-    <div class="nav-section-label">Setup</div>
-    <div class="nav-item active" data-page="loc" onclick="navTo('loc')">
-      <span class="nav-icon">📍</span> Select Location
+    <div class="nav-section-label">Quotes</div>
+    <div class="nav-item active" data-page="myquotes" onclick="navTo('myquotes')">
+      <span class="nav-icon">📁</span> My Quotes
+    </div>
+    <div class="nav-item" id="nav-admin" data-page="admin" onclick="navTo('admin')" style="display:none">
+      <span class="nav-icon">🛡️</span> Admin
     </div>
 
-    <div class="nav-section-label">Configure</div>
+    <div class="nav-section-label">Configure &amp; Location</div>
     <div class="nav-item" data-page="vm" onclick="navTo('vm')">
       <span class="nav-icon">🖥️</span> Virtual Machines
     </div>
@@ -335,13 +397,6 @@
       <span class="nav-icon">💲</span> Price Table
     </div>
 
-    <div class="nav-section-label">Quotes</div>
-    <div class="nav-item" data-page="myquotes" onclick="navTo('myquotes')">
-      <span class="nav-icon">📁</span> My Quotes
-    </div>
-    <div class="nav-item" id="nav-admin" data-page="admin" onclick="navTo('admin')" style="display:none">
-      <span class="nav-icon">🛡️</span> Admin
-    </div>
   </div>
 
   <!-- User profile at bottom of nav -->
@@ -383,28 +438,26 @@
   <div id="topbar">
     <button id="sidebarToggle" onclick="openSidebar()" title="Menu">☰</button>
     <div>
-      <div id="topbar-title">Select Location</div>
+      <div id="topbar-title">My Quotes</div>
       <div id="topbar-sub" style="font-size:.72rem;color:var(--text-secondary)">CloudSigma Instant Quoting Tool</div>
     </div>
   </div>
 
+  <!-- Location bar (persistent) -->
+  <div id="locBar">
+    <div class="locbar-group">
+      <label>📍 Location</label>
+      <select id="locationSelect"></select>
+    </div>
+    <div class="locbar-group">
+      <label>💱 Currency</label>
+      <select id="currencySelect"><option value="USD">USD (US Dollar)</option></select>
+    </div>
+    <div id="currencyInfo">—</div>
+  </div>
+
   <!-- Pages -->
   <div id="main-content">
-
-    <!-- ── Location ── -->
-    <div class="page active" id="page-loc">
-      <div class="page-header">
-        <h2>📍 Select Cloud Location</h2>
-        <p>Choose a CloudSigma location to load real-time pricing.</p>
-      </div>
-      <div class="card">
-        <div class="loc-row">
-          <div><label>Location</label><select id="locationSelect"></select></div>
-          <div><label>Display Currency</label><select id="currencySelect"><option value="USD">USD (US Dollar)</option></select></div>
-          <div><label>&nbsp;</label><div id="currencyInfo" style="padding-top:.3rem;font-size:.82rem;color:var(--text-secondary)">—</div></div>
-        </div>
-      </div>
-    </div>
 
     <!-- ── Virtual Machines ── -->
     <div class="page" id="page-vm">
@@ -585,6 +638,40 @@
         <p>Manage users, roles, and all quotes across the organisation.</p>
       </div>
 
+      <!-- ── Dashboard ── -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <h2 style="margin-bottom:1rem">📈 Dashboard</h2>
+        <!-- KPI cards -->
+        <div class="dash-kpi" id="dashKpi">
+          <div class="dash-kpi-card"><div class="dash-kpi-val" id="kpiPipeline">$0</div><div class="dash-kpi-lbl">Total Pipeline</div></div>
+          <div class="dash-kpi-card"><div class="dash-kpi-val" id="kpiQuotes">0</div><div class="dash-kpi-lbl">Quotes</div></div>
+          <div class="dash-kpi-card"><div class="dash-kpi-val" id="kpiUsers">0</div><div class="dash-kpi-lbl">Users</div></div>
+          <div class="dash-kpi-card"><div class="dash-kpi-val" id="kpiAvg">$0</div><div class="dash-kpi-lbl">Avg Quote</div></div>
+        </div>
+        <!-- Charts row 1 -->
+        <div class="dash-charts">
+          <div class="dash-chart-card">
+            <div class="dash-chart-title">📍 Revenue by Location</div>
+            <div id="chartByLocation"></div>
+          </div>
+          <div class="dash-chart-card">
+            <div class="dash-chart-title">👤 Revenue by User</div>
+            <div id="chartByUser"></div>
+          </div>
+        </div>
+        <!-- Charts row 2 -->
+        <div class="dash-charts">
+          <div class="dash-chart-card">
+            <div class="dash-chart-title">🔧 Revenue by Resource Group</div>
+            <div id="chartByResource"></div>
+          </div>
+          <div class="dash-chart-card">
+            <div class="dash-chart-title">🏆 Top Quotes</div>
+            <div id="chartTopQuotes"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Users table -->
       <div class="card" style="margin-bottom:1.25rem">
         <h2 style="margin-bottom:1rem">👥 Users</h2>
@@ -607,8 +694,16 @@
 </div><!-- /main-wrapper -->
 
 <!-- Floating quote panel -->
-<div id="floatingTotal" style="position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px;max-width:280px;font-family:Roboto,sans-serif;max-height:calc(100vh - 6rem);overflow-y:auto">
-  <div style="font-size:.7rem;font-weight:700;color:var(--cs-green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem">💰 Monthly Quote</div>
+<div id="floatingTotal">
+  <!-- Drag handle -->
+  <div id="floatHandle">
+    <span class="grip">⠿</span>
+    <span class="float-title">💰 Quote</span>
+    <button id="floatCollapseBtn" title="Collapse/Expand" onclick="toggleFloatCollapse()">—</button>
+    <button id="floatCloseBtn2" title="Hide panel" onclick="hideFloatPanel()">✕</button>
+  </div>
+  <!-- Collapsible body -->
+  <div id="floatBody">
   <div id="floatLocationInfo" style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.5rem"></div>
   <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem">
     <div><label style="font-size:.65rem;color:var(--text-secondary);margin-bottom:.15rem;display:block">Customer</label><input type="text" id="quoteCustomer" placeholder="Customer name" style="width:100%;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;padding:.25rem .4rem;color:var(--text-primary);font-size:.78rem;font-family:inherit"></div>
@@ -623,7 +718,11 @@
   <div id="saveStatus" style="font-size:.7rem;margin-top:.3rem;text-align:center"></div>
   <button class="btn-export" onclick="loadQuoteList()" style="width:100%;margin-top:.4rem;font-size:.78rem;padding:.45rem 0;background:linear-gradient(135deg,#7c3aed,#8b5cf6)">📂 Load Quote</button>
   <div id="quoteListPanel" style="display:none;margin-top:.5rem;max-height:250px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-input)"></div>
-</div>
+  </div><!-- /floatBody -->
+</div><!-- /floatingTotal -->
+
+<!-- Reopen floating panel button -->
+<button id="floatShowBtn" title="Show quote panel" onclick="showFloatPanel()">💰</button>
 
 <!-- Hidden legacy section wrappers app.js still references via section-body-* IDs -->
 <!-- These are kept as zero-size hidden containers so app.js's collapsed/toggleSection logic keeps working -->
@@ -714,11 +813,14 @@ function navTo(pageId){
 }
 window.navTo=navTo;
 
-// Restore last page
+// Restore last page (default: myquotes)
 (function(){
   var last;
   try{last=sessionStorage.getItem('iqt-page');}catch(e){}
+  // Skip 'loc' page since it no longer exists
+  if(last==='loc')last='myquotes';
   if(last&&document.getElementById('page-'+last))navTo(last);
+  else navTo('myquotes');
 })();
 
 // ── Mobile sidebar ─────────────────────────────────────────────────────
@@ -751,6 +853,93 @@ function syncSidebarTotals(){
 setInterval(syncSidebarTotals,300);
 </script>
 <script src="app.js"></script>
+<script>
+// ── Floating panel: drag, collapse, show/hide ──────────────────────────
+(function(){
+  var panel=document.getElementById('floatingTotal');
+  var handle=document.getElementById('floatHandle');
+  var body=document.getElementById('floatBody');
+  var colBtn=document.getElementById('floatCollapseBtn');
+  var showBtn=document.getElementById('floatShowBtn');
+  if(!panel||!handle)return;
+
+  // Restore position
+  var sx=parseFloat(localStorage.getItem('iqt-float-x'));
+  var sy=parseFloat(localStorage.getItem('iqt-float-y'));
+  if(!isNaN(sx)&&!isNaN(sy)){
+    panel.style.right='auto';
+    panel.style.left=sx+'px';
+    panel.style.top=sy+'px';
+  }
+
+  // Restore collapsed state
+  if(localStorage.getItem('iqt-float-collapsed')==='1'){
+    if(body)body.classList.add('collapsed');
+    if(colBtn)colBtn.textContent='□';
+  }
+
+  // Restore hidden state
+  if(localStorage.getItem('iqt-float-hidden')==='1'){
+    panel.style.display='none';
+    if(showBtn)showBtn.style.display='flex';
+  }
+
+  // Drag
+  var dragging=false,ox=0,oy=0;
+  handle.addEventListener('mousedown',function(e){
+    if(e.target===colBtn||e.target===showBtn||e.target.id==='floatCloseBtn2')return;
+    dragging=true;
+    var rect=panel.getBoundingClientRect();
+    ox=e.clientX-rect.left;
+    oy=e.clientY-rect.top;
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging)return;
+    var x=e.clientX-ox,y=e.clientY-oy;
+    x=Math.max(0,Math.min(x,window.innerWidth-panel.offsetWidth));
+    y=Math.max(0,Math.min(y,window.innerHeight-panel.offsetHeight));
+    panel.style.right='auto';
+    panel.style.left=x+'px';
+    panel.style.top=y+'px';
+    localStorage.setItem('iqt-float-x',x);
+    localStorage.setItem('iqt-float-y',y);
+  });
+  document.addEventListener('mouseup',function(){
+    dragging=false;
+    document.body.style.userSelect='';
+  });
+})();
+
+function toggleFloatCollapse(){
+  var body=document.getElementById('floatBody');
+  var btn=document.getElementById('floatCollapseBtn');
+  if(!body)return;
+  var collapsed=body.classList.toggle('collapsed');
+  if(btn)btn.textContent=collapsed?'□':'—';
+  localStorage.setItem('iqt-float-collapsed',collapsed?'1':'0');
+}
+window.toggleFloatCollapse=toggleFloatCollapse;
+
+function hideFloatPanel(){
+  var panel=document.getElementById('floatingTotal');
+  var btn=document.getElementById('floatShowBtn');
+  if(panel)panel.style.display='none';
+  if(btn)btn.style.display='flex';
+  localStorage.setItem('iqt-float-hidden','1');
+}
+window.hideFloatPanel=hideFloatPanel;
+
+function showFloatPanel(){
+  var panel=document.getElementById('floatingTotal');
+  var btn=document.getElementById('floatShowBtn');
+  if(panel)panel.style.display='';
+  if(btn)btn.style.display='none';
+  localStorage.setItem('iqt-float-hidden','0');
+}
+window.showFloatPanel=showFloatPanel;
+</script>
 <script>
 // ── PR footer ──────────────────────────────────────────────────────────
 document.getElementById('prFooter').textContent=window.location.href.includes('pr=')?'(PR #'+window.location.href.split('pr=')[1].split('&')[0]+')':'';
@@ -880,7 +1069,7 @@ function loadQuoteIntoApp(id){
     .then(function(r){return r.json();})
     .then(function(q){
       if(typeof restoreQuote==='function')restoreQuote(q);
-      navTo('loc');
+      navTo('vm');
     })
     .catch(function(){alert('Failed to load quote.');});
 }
@@ -969,6 +1158,68 @@ function revokeShare(qid,uid){
 }
 window.revokeShare=revokeShare;
 
+// ── Admin dashboard helpers ───────────────────────────────────────────
+var CHART_COLORS=['#00A94F','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
+function buildBarChart(containerId,data){
+  // data: [{label,value}] sorted desc
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  if(!data||!data.length){el.innerHTML='<div style="color:var(--text-secondary);font-size:.78rem;padding:.5rem 0">No data</div>';return;}
+  var max=data[0].value||1;
+  el.innerHTML=data.map(function(d,i){
+    var pct=Math.max(2,Math.round((d.value/max)*100));
+    var color=CHART_COLORS[i%CHART_COLORS.length];
+    return '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem;font-size:.75rem">'
+      +'<div style="flex:0 0 130px;text-align:right;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+d.label+'">'+d.label+'</div>'
+      +'<div style="flex:1;height:18px;background:var(--bg-input);border-radius:3px;overflow:hidden">'
+        +'<div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:3px;transition:width .4s ease"></div>'
+      +'</div>'
+      +'<div style="flex:0 0 80px;text-align:right;font-weight:600;color:var(--text-primary)">'+d.label2+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function populateAdminDashboard(quotes,users){
+  var total=0,count=quotes.length;
+  var byLoc={},byUser={},byRes={VM:0,PaaS:0,Kubernetes:0,TaaS:0,Omnifabric:0};
+  quotes.forEach(function(q){
+    var v=parseFloat(q.grandTotalMonthly)||0;
+    total+=v;
+    var loc=q.location||'Unknown';
+    byLoc[loc]=(byLoc[loc]||0)+v;
+    var u=q.ownerEmail||'Unknown';
+    byUser[u]=(byUser[u]||0)+v;
+    var rs=q.resourceSummary||{};
+    if(rs.totalVMs>0)byRes['VM']+=v;
+    if(rs.hasPaas)byRes['PaaS']+=v;
+    if(rs.hasKubernetes)byRes['Kubernetes']+=v;
+    if(rs.hasTaas)byRes['TaaS']+=v;
+    if(rs.hasOmnifabric)byRes['Omnifabric']+=v;
+  });
+  var avg=count?total/count:0;
+
+  // KPIs
+  var fmt=function(n){return'$'+(+n||0).toLocaleString('en-US',{maximumFractionDigits:0});};
+  var kp=document.getElementById('kpiPipeline');if(kp)kp.textContent=fmt(total)+'/mo';
+  var kq=document.getElementById('kpiQuotes');if(kq)kq.textContent=count;
+  var ku=document.getElementById('kpiUsers');if(ku)ku.textContent=(users||[]).length;
+  var ka=document.getElementById('kpiAvg');if(ka)ka.textContent=fmt(avg)+'/mo';
+
+  // Chart helpers
+  var toArr=function(obj){
+    return Object.keys(obj).map(function(k){return{label:k,value:obj[k],label2:fmt(obj[k])};})
+      .sort(function(a,b){return b.value-a.value;});
+  };
+  buildBarChart('chartByLocation',toArr(byLoc));
+  buildBarChart('chartByUser',toArr(byUser));
+  buildBarChart('chartByResource',toArr(byRes).filter(function(d){return d.value>0;}));
+  buildBarChart('chartTopQuotes',
+    quotes.slice().sort(function(a,b){return (b.grandTotalMonthly||0)-(a.grandTotalMonthly||0);})
+      .slice(0,10)
+      .map(function(q){return{label:q.opportunityName||q.customer||'—',value:parseFloat(q.grandTotalMonthly)||0,label2:fmt(q.grandTotalMonthly)};})
+  );
+}
+
 // ── Admin panel ───────────────────────────────────────────────────────
 function loadAdminPanel(){
   if(!_currentUser||_currentUser.role!=='admin')return;
@@ -1008,12 +1259,18 @@ function loadAdminPanel(){
       if(el)el.innerHTML='<div style="color:var(--red)">Failed to load users.</div>';
     });
 
-  // All quotes
+  // All quotes + dashboard
   fetch('/api/quotes')
     .then(function(r){return r.json();})
     .then(function(d){
-      var el=document.getElementById('adminQuotesList');if(!el)return;
       var quotes=d.quotes||[];
+      // Populate dashboard (need users too — fetch them)
+      fetch('/api/admin/users')
+        .then(function(r2){return r2.json();})
+        .then(function(d2){populateAdminDashboard(quotes,d2.users||[]);})
+        .catch(function(){populateAdminDashboard(quotes,[]);});
+      // Table
+      var el=document.getElementById('adminQuotesList');if(!el)return;
       if(!quotes.length){el.innerHTML='<div style="color:var(--text-secondary);padding:1rem">No quotes saved.</div>';return;}
       el.innerHTML='<table class="data-table"><thead><tr>'
         +'<th>Opportunity</th><th>Customer</th><th>Owner</th><th>Location</th><th>Total/mo</th><th>Saved</th><th></th>'
