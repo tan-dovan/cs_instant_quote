@@ -10,6 +10,12 @@
   "dependencies": {
     "express": "^4.22.1",
     "cors": "^2.8.6",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "express-session": "^1.18.0",
+    "sqlite3": "^5.1.7",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.4.5"
   }
 }

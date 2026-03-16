@@ -1,16 +1,42 @@
+require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch');
-const path = require('path');
-const fs = require('fs');
+const cors    = require('cors');
+const fetch   = require('node-fetch');
+const path    = require('path');
+const fs      = require('fs');
 const { execSync } = require('child_process');
 
-const app = express();
+const { init: initDb, get: dbGet, all: dbAll, run: dbRun } = require('./db');
+const { sessionMiddleware, authRoutes, requireAuth, requireAdmin } = require('./auth');
+
+const app  = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(express.json());
+
+// Session + Passport (must be before static so login page works)
+sessionMiddleware(app);
+
+// Public static files (login.html served without auth)
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Auth routes (/auth/google, /auth/google/callback, /auth/logout, /api/me)
+authRoutes(app);
+
+// ── Auth guard for the main SPA ──────────────────────────────────────
+// Allow: /login.html, /auth/*, /api/* (handled below per-route), static assets
+app.use(function(req, res, next) {
+  const pub = ['/login.html', '/favicon.ico', '/logo-dark-bg.png', '/logo-white-bg.png'];
+  if (pub.includes(req.path)) return next();
+  if (req.path.startsWith('/auth/')) return next();
+  if (req.path.startsWith('/api/')) return next();       // API routes handle auth themselves
+  // HTML navigation — require login
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    return res.redirect('/login.html');
+  }
+  next();
+});
 
 // ─── Cache ──────────────────────────────────────────────────────────────
 const cache = {};
@@ -350,6 +376,7 @@ app.get('/api/competitors', (req, res) => {
 });
 
 // ─── Quotes DB (JSON file) ───────────────────────────────────────────────
+// ─── Quotes DB (JSON file) ───────────────────────────────────────────────
 const QUOTES_FILE = path.join(__dirname, 'quotes.json');
 let quotesDB = {};
 try { quotesDB = JSON.parse(fs.readFileSync(QUOTES_FILE, 'utf8')); } catch(e) {}
@@ -358,76 +385,197 @@ function saveQuotesDB() {
   fs.writeFileSync(QUOTES_FILE, JSON.stringify(quotesDB, null, 2));
 }
 
-// Save a quote (upsert by opportunityId)
-app.post('/api/quotes', (req, res) => {
+function quoteToSummary(q, extra = {}) {
+  const vmCount  = (q.virtualMachines || []).length;
+  const totalVMs = (q.virtualMachines || []).reduce((s, vm) => s + (vm.qty || 1), 0);
+  return {
+    opportunityId:  q.opportunityId,
+    customer:       q.customer || '',
+    opportunityName:q.opportunityName || '',
+    location:       q.location || '',
+    currency:       q.currency || '',
+    grandTotalMonthly: q.totals ? q.totals.grandTotalMonthly : 0,
+    ownerId:        q.ownerId || null,
+    ownerEmail:     q.ownerEmail || null,
+    resourceSummary: {
+      vmConfigs: vmCount, totalVMs,
+      hasPaas:       !!(q.paas       && q.paas.total > 0),
+      hasOmnifabric: !!(q.omnifabric && q.omnifabric.total > 0),
+      hasTaas:       !!(q.taas       && q.taas.total > 0),
+      hasKubernetes: !!(q.kubernetes && q.kubernetes.total > 0),
+    },
+    savedAt: q.savedAt, createdAt: q.createdAt, updatedAt: q.updatedAt || null,
+    ...extra
+  };
+}
+
+// ── POST /api/quotes — save/update (auth required) ────────────────────
+app.post('/api/quotes', requireAuth, (req, res) => {
   const data = req.body;
   if (!data || !data.opportunityId) {
     return res.status(400).json({ error: 'opportunityId is required' });
   }
-  const id = data.opportunityId;
-  const isUpdate = !!quotesDB[id];
+  const id  = data.opportunityId;
+  const existing = quotesDB[id];
+  // Ownership check: only owner or admin can update
+  if (existing && existing.ownerId && existing.ownerId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Not your quote' });
+  }
   data.savedAt = new Date().toISOString();
-  if (isUpdate) {
-    data.updatedAt = data.savedAt;
-    data.createdAt = quotesDB[id].createdAt || data.savedAt;
+  if (existing) {
+    data.updatedAt  = data.savedAt;
+    data.createdAt  = existing.createdAt || data.savedAt;
+    data.ownerId    = existing.ownerId    || req.user.id;
+    data.ownerEmail = existing.ownerEmail || req.user.email;
   } else {
-    data.createdAt = data.savedAt;
+    data.createdAt  = data.savedAt;
+    data.ownerId    = req.user.id;
+    data.ownerEmail = req.user.email;
   }
   quotesDB[id] = data;
   saveQuotesDB();
-  res.json({ success: true, opportunityId: id, action: isUpdate ? 'updated' : 'created' });
+  res.json({ success: true, opportunityId: id, action: existing ? 'updated' : 'created' });
 });
 
-// Get all quotes (list)
-app.get('/api/quotes', (req, res) => {
-  const list = Object.values(quotesDB).map(q => {
-    const vmCount  = (q.virtualMachines || []).length;
-    const totalVMs = (q.virtualMachines || []).reduce((s, vm) => s + (vm.qty || 1), 0);
-    return {
-      opportunityId:  q.opportunityId,
-      customer:       q.customer || '',
-      opportunityName:q.opportunityName || '',
-      location:       q.location || '',
-      currency:       q.currency || '',
-      grandTotalMonthly: q.totals ? q.totals.grandTotalMonthly : 0,
-      resourceSummary: {
-        vmConfigs: vmCount, totalVMs,
-        hasPaas:       q.paas       && q.paas.total > 0,
-        hasOmnifabric: q.omnifabric && q.omnifabric.total > 0,
-        hasTaas:       q.taas       && q.taas.total > 0,
-        hasKubernetes: q.kubernetes && q.kubernetes.total > 0,
-      },
-      savedAt: q.savedAt, createdAt: q.createdAt, updatedAt: q.updatedAt || null
-    };
-  });
+// ── GET /api/quotes — list (auth required, RBAC filtered) ────────────
+app.get('/api/quotes', requireAuth, async (req, res) => {
+  const uid   = req.user.id;
+  const isAdm = req.user.role === 'admin';
+
+  // Get quote IDs shared with this user
+  let sharedIds = [];
+  try {
+    const rows = await dbAll('SELECT quote_id FROM quote_shares WHERE shared_with = ?', [uid]);
+    sharedIds = rows.map(r => r.quote_id);
+  } catch(e) {}
+
+  const list = Object.values(quotesDB)
+    .filter(q => isAdm || q.ownerId === uid || sharedIds.includes(q.opportunityId))
+    .map(q => {
+      const isShared = !isAdm && q.ownerId !== uid && sharedIds.includes(q.opportunityId);
+      return quoteToSummary(q, { isShared, isOwner: q.ownerId === uid });
+    });
+
   list.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
   res.json({ quotes: list, total: list.length });
 });
 
-// Get a single quote by opportunityId
-app.get('/api/quotes/:id', (req, res) => {
+// ── GET /api/quotes/:id — single quote (auth required, RBAC) ─────────
+app.get('/api/quotes/:id', requireAuth, async (req, res) => {
   const q = quotesDB[req.params.id];
   if (!q) return res.status(404).json({ error: 'Quote not found' });
+  const uid   = req.user.id;
+  const isAdm = req.user.role === 'admin';
+  // Check ownership or share
+  let shared = false;
+  try {
+    const row = await dbGet('SELECT id FROM quote_shares WHERE quote_id = ? AND shared_with = ?',
+      [req.params.id, uid]);
+    shared = !!row;
+  } catch(e) {}
+  if (!isAdm && q.ownerId !== uid && !shared) {
+    return res.status(403).json({ error: 'Not your quote' });
+  }
   res.json(q);
 });
 
-// Delete a quote
-app.delete('/api/quotes/:id', (req, res) => {
+// ── DELETE /api/quotes/:id — owner or admin only ──────────────────────
+app.delete('/api/quotes/:id', requireAuth, (req, res) => {
   const id = req.params.id;
-  if (!quotesDB[id]) return res.status(404).json({ error: 'Quote not found' });
+  const q  = quotesDB[id];
+  if (!q) return res.status(404).json({ error: 'Quote not found' });
+  if (q.ownerId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Not your quote' });
+  }
   delete quotesDB[id];
   saveQuotesDB();
   res.json({ success: true, deleted: id });
 });
 
-// ─── SPA fallback ───────────────────────────────────────────────────────
+// ── POST /api/quotes/:id/share — share with another user ─────────────
+app.post('/api/quotes/:id/share', requireAuth, async (req, res) => {
+  const id  = req.params.id;
+  const q   = quotesDB[id];
+  if (!q) return res.status(404).json({ error: 'Quote not found' });
+  if (q.ownerId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Not your quote' });
+  }
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'email is required' });
+
+  const target = await dbGet('SELECT id, email, name FROM users WHERE email = ?', [email]);
+  if (!target) return res.status(404).json({ error: 'User not found. They must log in at least once.' });
+  if (target.id === req.user.id) return res.status(400).json({ error: 'Cannot share with yourself' });
+
+  try {
+    await dbRun(
+      'INSERT OR IGNORE INTO quote_shares (quote_id, owner_id, shared_with) VALUES (?, ?, ?)',
+      [id, req.user.id, target.id]
+    );
+    res.json({ success: true, sharedWith: { id: target.id, email: target.email, name: target.name } });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── DELETE /api/quotes/:id/share/:userId — revoke share ──────────────
+app.delete('/api/quotes/:id/share/:userId', requireAuth, async (req, res) => {
+  const q = quotesDB[req.params.id];
+  if (!q) return res.status(404).json({ error: 'Quote not found' });
+  if (q.ownerId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Not your quote' });
+  }
+  await dbRun('DELETE FROM quote_shares WHERE quote_id = ? AND shared_with = ?',
+    [req.params.id, req.params.userId]);
+  res.json({ success: true });
+});
+
+// ── GET /api/quotes/:id/shares — list who it's shared with ───────────
+app.get('/api/quotes/:id/shares', requireAuth, async (req, res) => {
+  const q = quotesDB[req.params.id];
+  if (!q) return res.status(404).json({ error: 'Quote not found' });
+  if (q.ownerId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Not your quote' });
+  }
+  const rows = await dbAll(
+    `SELECT qs.shared_with, u.email, u.name, qs.created_at
+     FROM quote_shares qs JOIN users u ON u.id = qs.shared_with
+     WHERE qs.quote_id = ?`, [req.params.id]
+  );
+  res.json({ shares: rows });
+});
+
+// ── Admin: list all users ─────────────────────────────────────────────
+app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
+  const users = await dbAll('SELECT id, email, name, picture, role, created_at, last_login FROM users ORDER BY created_at DESC');
+  res.json({ users });
+});
+
+// ── Admin: update user role ───────────────────────────────────────────
+app.patch('/api/admin/users/:id/role', requireAuth, requireAdmin, async (req, res) => {
+  const { role } = req.body;
+  if (!['admin', 'user'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  await dbRun('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
+  res.json({ success: true });
+});
+
+// ─── SPA fallback (auth-guarded) ────────────────────────────────────────
 app.get('*', (req, res) => {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    return res.redirect('/login.html');
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n  ☁️  CloudSigma Instant Quoting Tool`);
-  console.log(`  → Running on http://0.0.0.0:${PORT}`);
-  const g = getGitInfo();
-  console.log(`  → Commit: ${g.short} — ${g.message}\n`);
+// ─── Start ───────────────────────────────────────────────────────────────
+initDb().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n  ☁️  CloudSigma Instant Quoting Tool`);
+    console.log(`  → Running on http://0.0.0.0:${PORT}`);
+    const g = getGitInfo();
+    console.log(`  → Commit: ${g.short} — ${g.message}\n`);
+  });
+}).catch(err => {
+  console.error('Failed to init DB:', err);
+  process.exit(1);
 });

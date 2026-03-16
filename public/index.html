@@ -231,6 +231,34 @@
     /* ── Floating quote panel (right) ── */
     #floatingTotal{position:fixed;right:1rem;top:5rem;background:var(--bg-card);border:2px solid var(--cs-green);border-radius:10px;padding:1rem 1.2rem;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:1000;min-width:220px;max-width:280px;font-family:Roboto,sans-serif;max-height:calc(100vh - 6rem);overflow-y:auto}
 
+    /* ── Quote cards ── */
+    .quote-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:1rem 1.25rem;box-shadow:var(--shadow-card);transition:box-shadow .15s}
+    .quote-card:hover{box-shadow:var(--shadow-card-hover)}
+    .quote-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:.5rem}
+    .quote-card-title{font-size:.92rem;font-weight:700;color:var(--text-heading)}
+    .quote-card-customer{font-size:.78rem;color:var(--text-secondary)}
+    .quote-card-total{font-size:1.1rem;font-weight:700;color:var(--cs-green);white-space:nowrap}
+    .quote-card-meta{display:flex;gap:.75rem;flex-wrap:wrap;font-size:.72rem;color:var(--text-secondary);margin-bottom:.6rem}
+    .quote-card-meta span{display:inline-flex;align-items:center;gap:.25rem}
+    .quote-card-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.5rem}
+    .badge{display:inline-block;font-size:.62rem;font-weight:700;padding:.15rem .45rem;border-radius:4px;text-transform:uppercase;letter-spacing:.04em}
+    .badge-shared{background:rgba(96,165,250,.15);color:var(--blue);border:1px solid rgba(96,165,250,.3)}
+    .badge-admin{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+    .badge-owner{background:var(--cs-green-bg);color:var(--cs-green);border:1px solid rgba(0,169,79,.3)}
+
+    /* Share modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center}
+    .modal{background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:1.5rem;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+    .modal h3{font-size:1rem;font-weight:700;margin-bottom:1rem;color:var(--cs-green)}
+    .modal-close{float:right;background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-secondary);margin-top:-.2rem}
+
+    /* Admin table */
+    .data-table{width:100%;border-collapse:collapse;font-size:.8rem}
+    .data-table th{text-align:left;padding:.4rem .6rem;border-bottom:2px solid var(--border-color);color:var(--text-secondary);font-size:.7rem;text-transform:uppercase;font-weight:700}
+    .data-table td{padding:.45rem .6rem;border-bottom:1px solid var(--border-color);vertical-align:middle}
+    .data-table tr:hover td{background:var(--table-hover)}
+    .data-table .avatar{width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:.35rem}
+
     /* ── Hamburger (mobile) ── */
     #sidebarToggle{display:none;background:none;border:none;cursor:pointer;padding:.4rem;color:var(--text-primary);font-size:1.2rem}
     #sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199}
@@ -306,6 +334,24 @@
     <div class="nav-item" data-page="prices" onclick="navTo('prices')">
       <span class="nav-icon">💲</span> Price Table
     </div>
+
+    <div class="nav-section-label">Quotes</div>
+    <div class="nav-item" data-page="myquotes" onclick="navTo('myquotes')">
+      <span class="nav-icon">📁</span> My Quotes
+    </div>
+    <div class="nav-item" id="nav-admin" data-page="admin" onclick="navTo('admin')" style="display:none">
+      <span class="nav-icon">🛡️</span> Admin
+    </div>
+  </div>
+
+  <!-- User profile at bottom of nav -->
+  <div id="userProfile" style="padding:.75rem 1rem;border-top:1px solid var(--sidebar-border);display:flex;align-items:center;gap:.6rem;min-height:56px">
+    <img id="userAvatar" src="" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;display:none;flex-shrink:0;border:2px solid var(--cs-green)"/>
+    <div style="flex:1;min-width:0">
+      <div id="userName" style="font-size:.78rem;font-weight:600;color:var(--text-heading);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      <div id="userRole" style="font-size:.62rem;color:var(--text-secondary)"></div>
+    </div>
+    <a href="/auth/logout" title="Sign out" style="color:var(--text-secondary);font-size:.75rem;text-decoration:none;flex-shrink:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-secondary)'">⏻</a>
   </div>
 
   <!-- Mini totals in sidebar -->
@@ -509,6 +555,49 @@
       </div>
     </div>
 
+    <!-- ── My Quotes ── -->
+    <div class="page" id="page-myquotes">
+      <div class="page-header">
+        <h2>📁 My Quotes</h2>
+        <p id="myquotes-desc">Your saved quotes and quotes shared with you.</p>
+      </div>
+
+      <!-- Filter bar -->
+      <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+        <input type="text" id="mqSearch" placeholder="🔍  Search customer, opportunity…"
+          style="flex:1;min-width:200px;padding:.45rem .75rem;font-size:.83rem"
+          oninput="filterMyQuotes()"/>
+        <select id="mqFilter" onchange="filterMyQuotes()" style="padding:.45rem .6rem;font-size:.82rem">
+          <option value="all">All quotes</option>
+          <option value="mine">Mine only</option>
+          <option value="shared">Shared with me</option>
+        </select>
+        <button class="btn-primary" onclick="loadMyQuotes()" style="padding:.45rem .9rem;font-size:.82rem">↻ Refresh</button>
+      </div>
+
+      <div id="myquotes-list" style="display:flex;flex-direction:column;gap:.75rem"></div>
+    </div>
+
+    <!-- ── Admin ── -->
+    <div class="page" id="page-admin">
+      <div class="page-header">
+        <h2>🛡️ Admin Panel</h2>
+        <p>Manage users, roles, and all quotes across the organisation.</p>
+      </div>
+
+      <!-- Users table -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <h2 style="margin-bottom:1rem">👥 Users</h2>
+        <div id="adminUsersList"></div>
+      </div>
+
+      <!-- All quotes -->
+      <div class="card">
+        <h2 style="margin-bottom:.75rem">📋 All Quotes</h2>
+        <div id="adminQuotesList"></div>
+      </div>
+    </div>
+
   </div><!-- /main-content -->
 
   <footer style="text-align:center;padding:1.5rem 0;color:var(--text-secondary);font-size:.8rem;border-top:1px solid var(--border-color);margin:0 1.5rem">
@@ -601,28 +690,27 @@ var PAGE_TITLES={
   k8s:'Kubernetes',
   sum:'Summary & Breakdown',
   cmp:'Provider Comparison',
-  prices:'Price Table'
+  prices:'Price Table',
+  myquotes:'My Quotes',
+  admin:'Admin Panel'
 };
 
 var _currentPage='loc';
 function navTo(pageId){
-  // Hide all pages
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-  // Show target
   var p=document.getElementById('page-'+pageId);
   if(p)p.classList.add('active');
-  // Update nav active state
   document.querySelectorAll('.nav-item').forEach(function(n){
     n.classList.toggle('active',n.getAttribute('data-page')===pageId);
   });
-  // Update topbar title
   var tt=document.getElementById('topbar-title');
   if(tt)tt.textContent=PAGE_TITLES[pageId]||pageId;
   _currentPage=pageId;
-  // Close sidebar on mobile
   closeSidebar();
-  // Persist
   try{sessionStorage.setItem('iqt-page',pageId);}catch(e){}
+  // Lazy-load pages
+  if(pageId==='myquotes')loadMyQuotes();
+  if(pageId==='admin')loadAdminPanel();
 }
 window.navTo=navTo;
 
@@ -682,6 +770,284 @@ document.getElementById('prFooter').textContent=window.location.href.includes('p
     })
     .catch(function(){var el=document.getElementById('commitShort');if(el)el.textContent='dev';});
 })();
+
+// ── Current user + profile ────────────────────────────────────────────
+var _currentUser=null;
+(function(){
+  fetch('/api/me')
+    .then(function(r){if(!r.ok)throw new Error('unauth');return r.json();})
+    .then(function(u){
+      _currentUser=u;
+      var nm=document.getElementById('userName');
+      var rl=document.getElementById('userRole');
+      var av=document.getElementById('userAvatar');
+      if(nm)nm.textContent=u.name||u.email;
+      if(rl){rl.textContent=u.role==='admin'?'🛡️ Admin':'👤 User';}
+      if(av&&u.picture){av.src=u.picture;av.style.display='block';}
+      if(u.role==='admin'){
+        var na=document.getElementById('nav-admin');
+        if(na)na.style.display='flex';
+      }
+    })
+    .catch(function(){window.location.href='/login.html';});
+})();
+
+// ── My Quotes ─────────────────────────────────────────────────────────
+var _allQuotes=[];
+function fmt$(n){return'$'+(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function timeAgo(iso){
+  if(!iso)return'';
+  var d=new Date(iso),now=Date.now(),diff=Math.floor((now-d)/1000);
+  if(diff<60)return diff+'s ago';
+  if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+function renderQuoteCard(q){
+  var isAdmin=_currentUser&&_currentUser.role==='admin';
+  var tags='';
+  if(isAdmin&&q.ownerId!==(_currentUser&&_currentUser.id))tags+='<span class="badge badge-admin">all quotes</span> ';
+  if(q.isShared)tags+='<span class="badge badge-shared">shared</span> ';
+  if(q.isOwner||(!q.isShared&&!isAdmin))tags+='<span class="badge badge-owner">mine</span> ';
+  var pills=[];
+  var rs=q.resourceSummary||{};
+  if(rs.totalVMs>0)pills.push('🖥️ '+rs.totalVMs+' VM'+(rs.totalVMs>1?'s':''));
+  if(rs.hasPaas)pills.push('☁️ PaaS');
+  if(rs.hasKubernetes)pills.push('⎈ K8s');
+  if(rs.hasTaas)pills.push('🤖 TaaS');
+  if(rs.hasOmnifabric)pills.push('🔗 OF');
+  var pillsHtml=pills.map(function(p){return'<span>'+p+'</span>';}).join('');
+  var canShare=isAdmin||(q.ownerId===(_currentUser&&_currentUser.id));
+  var canDelete=isAdmin||(q.ownerId===(_currentUser&&_currentUser.id));
+
+  return '<div class="quote-card" id="qc-'+q.opportunityId+'">'
+    +'<div class="quote-card-header">'
+    +'<div><div class="quote-card-title">'+(q.opportunityName||'Untitled')+'</div>'
+    +'<div class="quote-card-customer">'+(q.customer||'—')+(q.ownerEmail&&isAdmin?' &bull; <span style="color:var(--blue)">'+q.ownerEmail+'</span>':'')+'</div></div>'
+    +'<div class="quote-card-total">'+fmt$(q.grandTotalMonthly)+'/mo</div>'
+    +'</div>'
+    +'<div class="quote-card-meta">'
+    +(q.location?'<span>📍 '+q.location+'</span>':'')
+    +'<span>🕒 '+timeAgo(q.savedAt)+'</span>'
+    +pillsHtml
+    +'</div>'
+    +'<div style="margin-bottom:.4rem">'+tags+'</div>'
+    +'<div class="quote-card-actions">'
+    +'<button class="btn-primary" style="font-size:.75rem;padding:.3rem .7rem" onclick="loadQuoteIntoApp(\''+q.opportunityId+'\')">📂 Open</button>'
+    +(canShare?'<button class="btn-add" style="font-size:.75rem;padding:.3rem .7rem;margin-top:0" onclick="openShareModal(\''+q.opportunityId+'\')">🔗 Share</button>':'')
+    +(canDelete?'<button class="btn-rm" style="font-size:.72rem;padding:.3rem .7rem" onclick="deleteQuote(\''+q.opportunityId+'\')">🗑️ Delete</button>':'')
+    +'</div>'
+    +'</div>';
+}
+
+function filterMyQuotes(){
+  var q=(document.getElementById('mqSearch').value||'').toLowerCase();
+  var f=document.getElementById('mqFilter').value;
+  var filtered=_allQuotes.filter(function(qt){
+    if(f==='mine'&&!qt.isOwner&&!(_currentUser&&_currentUser.role==='admin'))return false;
+    if(f==='shared'&&!qt.isShared)return false;
+    if(q&&!(
+      (qt.customer||'').toLowerCase().includes(q)||
+      (qt.opportunityName||'').toLowerCase().includes(q)||
+      (qt.location||'').toLowerCase().includes(q)||
+      (qt.ownerEmail||'').toLowerCase().includes(q)
+    ))return false;
+    return true;
+  });
+  var el=document.getElementById('myquotes-list');
+  if(!el)return;
+  if(!filtered.length){el.innerHTML='<div style="color:var(--text-secondary);padding:2rem;text-align:center">No quotes found.</div>';return;}
+  el.innerHTML=filtered.map(renderQuoteCard).join('');
+}
+window.filterMyQuotes=filterMyQuotes;
+
+function loadMyQuotes(){
+  var el=document.getElementById('myquotes-list');
+  if(el)el.innerHTML='<div style="color:var(--text-secondary);padding:1rem">Loading…</div>';
+  fetch('/api/quotes')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      _allQuotes=d.quotes||[];
+      filterMyQuotes();
+    })
+    .catch(function(){if(el)el.innerHTML='<div style="color:var(--red)">Failed to load quotes.</div>';});
+}
+window.loadMyQuotes=loadMyQuotes;
+
+function loadQuoteIntoApp(id){
+  fetch('/api/quotes/'+id)
+    .then(function(r){return r.json();})
+    .then(function(q){
+      if(typeof restoreQuote==='function')restoreQuote(q);
+      navTo('loc');
+    })
+    .catch(function(){alert('Failed to load quote.');});
+}
+window.loadQuoteIntoApp=loadQuoteIntoApp;
+
+function deleteQuote(id){
+  if(!confirm('Delete this quote? This cannot be undone.'))return;
+  fetch('/api/quotes/'+id,{method:'DELETE'})
+    .then(function(r){return r.json();})
+    .then(function(){loadMyQuotes();})
+    .catch(function(){alert('Delete failed.');});
+}
+window.deleteQuote=deleteQuote;
+
+// ── Share modal ───────────────────────────────────────────────────────
+var _shareQuoteId=null;
+function openShareModal(quoteId){
+  _shareQuoteId=quoteId;
+  // Build modal
+  var existing=document.getElementById('shareModal');
+  if(existing)existing.remove();
+  var m=document.createElement('div');
+  m.id='shareModal';m.className='modal-overlay';
+  m.innerHTML='<div class="modal">'
+    +'<h3>🔗 Share Quote <button class="modal-close" onclick="closeShareModal()">✕</button></h3>'
+    +'<p style="font-size:.8rem;color:var(--text-secondary);margin-bottom:.75rem">Enter the Google email address of the person to share with. They must have logged in at least once.</p>'
+    +'<div style="display:flex;gap:.5rem">'
+    +'<input type="email" id="shareEmail" placeholder="user@example.com" style="flex:1;padding:.4rem .6rem;font-size:.83rem"/>'
+    +'<button class="btn-primary" onclick="submitShare()" style="padding:.4rem .9rem;font-size:.82rem">Share</button>'
+    +'</div>'
+    +'<div id="shareStatus" style="margin-top:.6rem;font-size:.78rem"></div>'
+    +'<div id="shareList" style="margin-top:.75rem"></div>'
+    +'</div>';
+  document.body.appendChild(m);
+  m.addEventListener('click',function(e){if(e.target===m)closeShareModal();});
+  setTimeout(function(){var i=document.getElementById('shareEmail');if(i)i.focus();},50);
+  loadShareList(quoteId);
+}
+window.openShareModal=openShareModal;
+
+function closeShareModal(){var m=document.getElementById('shareModal');if(m)m.remove();}
+window.closeShareModal=closeShareModal;
+
+function loadShareList(qid){
+  var el=document.getElementById('shareList');if(!el)return;
+  fetch('/api/quotes/'+qid+'/shares')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.shares||!d.shares.length){el.innerHTML='<div style="color:var(--text-secondary);font-size:.78rem">Not shared with anyone yet.</div>';return;}
+      el.innerHTML='<div style="font-size:.72rem;color:var(--text-secondary);margin-bottom:.35rem;font-weight:700;text-transform:uppercase">Shared with</div>'
+        +d.shares.map(function(s){
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border-color);font-size:.8rem">'
+            +'<span>'+s.email+(s.name?' ('+s.name+')':'')+'</span>'
+            +'<button class="btn-rm" onclick="revokeShare(\''+qid+'\',\''+s.shared_with+'\')" style="font-size:.68rem;padding:.15rem .4rem">Revoke</button>'
+            +'</div>';
+        }).join('');
+    })
+    .catch(function(){if(el)el.textContent='';});
+}
+
+function submitShare(){
+  var email=document.getElementById('shareEmail').value.trim();
+  var st=document.getElementById('shareStatus');
+  if(!email){if(st)st.innerHTML='<span style="color:var(--red)">Enter an email.</span>';return;}
+  if(st)st.innerHTML='<span style="color:var(--text-secondary)">Sharing…</span>';
+  fetch('/api/quotes/'+_shareQuoteId+'/share',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email})
+  }).then(function(r){return r.json();})
+    .then(function(d){
+      if(d.error){if(st)st.innerHTML='<span style="color:var(--red)">'+d.error+'</span>';}
+      else{
+        if(st)st.innerHTML='<span style="color:var(--green)">✓ Shared with '+d.sharedWith.email+'</span>';
+        document.getElementById('shareEmail').value='';
+        loadShareList(_shareQuoteId);
+      }
+    })
+    .catch(function(){if(st)st.innerHTML='<span style="color:var(--red)">Error sharing.</span>';});
+}
+window.submitShare=submitShare;
+
+function revokeShare(qid,uid){
+  fetch('/api/quotes/'+qid+'/share/'+uid,{method:'DELETE'})
+    .then(function(){loadShareList(qid);})
+    .catch(function(){alert('Revoke failed.');});
+}
+window.revokeShare=revokeShare;
+
+// ── Admin panel ───────────────────────────────────────────────────────
+function loadAdminPanel(){
+  if(!_currentUser||_currentUser.role!=='admin')return;
+  // Users
+  fetch('/api/admin/users')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var el=document.getElementById('adminUsersList');if(!el)return;
+      if(!d.users||!d.users.length){
+        el.innerHTML='<div style="color:var(--text-secondary);padding:1rem">No users yet.</div>';return;
+      }
+      el.innerHTML='<table class="data-table"><thead><tr>'
+        +'<th>User</th><th>Email</th><th>Role</th><th>Last Login</th><th>Action</th>'
+        +'</tr></thead><tbody>'
+        +d.users.map(function(u){
+          var isSelf=_currentUser&&u.id===_currentUser.id;
+          return '<tr>'
+            +'<td>'+(u.picture?'<img src="'+u.picture+'" class="avatar"/>':'')+u.name+'</td>'
+            +'<td style="color:var(--text-secondary)">'+u.email+'</td>'
+            +'<td>'
+            +(isSelf
+              ?'<span class="badge badge-admin">'+u.role+'</span>'
+              :'<select onchange="setUserRole(\''+u.id+'\',this.value)" style="font-size:.75rem;padding:.2rem .4rem">'
+               +'<option value="user"'+(u.role==='user'?' selected':'')+'>user</option>'
+               +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>'
+               +'</select>'
+            )
+            +'</td>'
+            +'<td style="color:var(--text-secondary);font-size:.75rem">'+(u.last_login?timeAgo(u.last_login):'—')+'</td>'
+            +'<td>'+(isSelf?'<span style="font-size:.72rem;color:var(--text-secondary)">you</span>':'')+'</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table>';
+    })
+    .catch(function(){
+      var el=document.getElementById('adminUsersList');
+      if(el)el.innerHTML='<div style="color:var(--red)">Failed to load users.</div>';
+    });
+
+  // All quotes
+  fetch('/api/quotes')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var el=document.getElementById('adminQuotesList');if(!el)return;
+      var quotes=d.quotes||[];
+      if(!quotes.length){el.innerHTML='<div style="color:var(--text-secondary);padding:1rem">No quotes saved.</div>';return;}
+      el.innerHTML='<table class="data-table"><thead><tr>'
+        +'<th>Opportunity</th><th>Customer</th><th>Owner</th><th>Location</th><th>Total/mo</th><th>Saved</th><th></th>'
+        +'</tr></thead><tbody>'
+        +quotes.map(function(q){
+          return '<tr>'
+            +'<td style="font-weight:600">'+(q.opportunityName||'—')+'</td>'
+            +'<td>'+(q.customer||'—')+'</td>'
+            +'<td style="color:var(--blue);font-size:.75rem">'+(q.ownerEmail||'—')+'</td>'
+            +'<td style="font-size:.75rem">'+(q.location||'—')+'</td>'
+            +'<td style="color:var(--cs-green);font-weight:700">'+fmt$(q.grandTotalMonthly)+'</td>'
+            +'<td style="color:var(--text-secondary);font-size:.75rem">'+timeAgo(q.savedAt)+'</td>'
+            +'<td><button class="btn-primary" style="font-size:.7rem;padding:.2rem .5rem" onclick="loadQuoteIntoApp(\''+q.opportunityId+'\')">Open</button>'
+            +' <button class="btn-rm" style="font-size:.68rem;padding:.2rem .4rem" onclick="deleteQuote(\''+q.opportunityId+'\')">Del</button></td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table>';
+    })
+    .catch(function(){
+      var el=document.getElementById('adminQuotesList');
+      if(el)el.innerHTML='<div style="color:var(--red)">Failed to load quotes.</div>';
+    });
+}
+window.loadAdminPanel=loadAdminPanel;
+
+function setUserRole(userId,role){
+  fetch('/api/admin/users/'+userId+'/role',{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({role:role})
+  }).then(function(r){return r.json();})
+    .then(function(d){if(d.error)alert(d.error);else loadAdminPanel();})
+    .catch(function(){alert('Failed to update role.');});
+}
+window.setUserRole=setUserRole;
 </script>
 </body>
 </html>
