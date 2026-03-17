@@ -103,7 +103,13 @@ function authRoutes(app) {
   // OAuth callback
   app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/login.html?error=1' }),
-    (req, res) => res.redirect('/')
+    (req, res) => {
+      // Explicitly save session before redirect to ensure cookie is written
+      req.session.save((err) => {
+        if (err) console.error('[AUTH] session save error:', err);
+        res.redirect('/');
+      });
+    }
   );
 
   // Logout
