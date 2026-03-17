@@ -1326,7 +1326,7 @@ function loadAdminPanel(){
         +'</tr></thead><tbody>'
         +quotes.map(function(q){
           return '<tr>'
-            +'<td style="font-weight:600">'+(q.opportunityName?'<a href="#" style="color:var(--cs-green);text-decoration:none" onclick="adminOpenQuote(event,''+q.opportunityId+'')">'+q.opportunityName+'</a>':'—')+'</td>'
+            +'<td style="font-weight:600">'+(q.opportunityName?'<a href="#" style="color:var(--cs-green);text-decoration:none" onclick="adminOpenQuote(event,\''+q.opportunityId+'\')">'+q.opportunityName+'</a>':'—')+'</td>'
             +'<td>'+(q.customer||'—')+'</td>'
             +'<td style="color:var(--blue);font-size:.75rem">'+(q.ownerEmail||'—')+'</td>'
             +'<td style="font-size:.75rem">'+(q.location||'—')+'</td>'
