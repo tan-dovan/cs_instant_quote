@@ -442,9 +442,16 @@
   <!-- Topbar -->
   <div id="topbar">
     <button id="sidebarToggle" onclick="openSidebar()" title="Menu">☰</button>
-    <div>
+    <div style="flex:1;min-width:0">
       <div id="topbar-title">My Quotes</div>
       <div id="topbar-sub" style="font-size:.72rem;color:var(--text-secondary)">CloudSigma Instant Quoting Tool</div>
+    </div>
+    <div id="topbarQuoteBanner" style="display:none;flex-direction:column;align-items:flex-end;gap:.05rem;margin-left:auto;padding-right:.5rem">
+      <div id="topbarQuoteNameBig" style="font-size:1.15rem;font-weight:800;color:var(--text-heading);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;line-height:1.1"></div>
+      <div style="display:flex;gap:.5rem;align-items:center;font-size:.68rem;color:var(--text-secondary)">
+        <span id="topbarCustMeta"></span>
+        <span id="topbarOppMeta" style="color:var(--blue);font-weight:600"></span>
+      </div>
     </div>
   </div>
 
@@ -461,7 +468,11 @@
     <div id="currencyInfo">—</div>
     <div class="locbar-actions">
       <div id="locbarQuoteInfo" style="display:flex;flex-direction:column;align-items:flex-end;gap:.1rem;margin-right:.5rem">
-        <span id="locbarQuoteName" style="font-size:.72rem;font-weight:700;color:var(--text-heading);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis" title=""></span>
+        <div style="display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+          <span id="locbarCustomerLabel" style="font-size:.68rem;color:var(--text-secondary);white-space:nowrap"></span>
+          <span id="locbarOppLabel" style="font-size:.68rem;font-weight:600;color:var(--blue);white-space:nowrap"></span>
+          <span id="locbarQuoteName" style="font-size:.72rem;font-weight:700;color:var(--text-heading);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis" title=""></span>
+        </div>
         <div style="display:flex;gap:.6rem;align-items:baseline">
           <span style="font-size:.62rem;color:var(--green)">Sub <span id="locbarTotalSub" style="font-weight:700">$0.00</span></span>
           <span style="font-size:.62rem;color:var(--orange)">Burst <span id="locbarTotalBurst" style="font-weight:700">$0.00</span></span>
@@ -866,15 +877,27 @@ function syncSidebarTotals(){
   if(ls&&sub)ls.textContent=sub.textContent;
   if(lb&&burst)lb.textContent=burst.textContent;
   if(lc&&combined)lc.textContent=combined.textContent;
-  // locbar quote name — read from the float panel inputs
+  // locbar quote meta (customer / opp / quote name) + topbar banner
   var opp=document.getElementById('quoteOpportunity');
   var cust=document.getElementById('quoteCustomer');
   var nameEl=document.getElementById('locbarQuoteName');
-  if(nameEl){
-    var label=(opp&&opp.value.trim())||(cust&&cust.value.trim())||'';
-    nameEl.textContent=label?'📄 '+label:'';
-    nameEl.title=label;
-  }
+  var custLbl=document.getElementById('locbarCustomerLabel');
+  var oppLbl=document.getElementById('locbarOppLabel');
+  var topBanner=document.getElementById('topbarQuoteBanner');
+  var topName=document.getElementById('topbarQuoteNameBig');
+  var topCust=document.getElementById('topbarCustMeta');
+  var topOpp=document.getElementById('topbarOppMeta');
+  var custVal=cust&&cust.value.trim()||'';
+  var oppVal=opp&&opp.value.trim()||'';
+  var quoteLabel=oppVal||custVal||'';
+  if(nameEl){nameEl.textContent=quoteLabel?'📄 '+quoteLabel:'';nameEl.title=quoteLabel;}
+  if(custLbl){custLbl.textContent=custVal?'🏢 '+custVal:'';}
+  if(oppLbl){oppLbl.textContent=oppVal?'📋 '+oppVal:'';}
+  // topbar banner
+  if(topBanner){topBanner.style.display=quoteLabel?'flex':'none';}
+  if(topName){topName.textContent=quoteLabel;}
+  if(topCust){topCust.textContent=custVal||'';}
+  if(topOpp){topOpp.textContent=oppVal||'';}
 }
 setInterval(syncSidebarTotals,300);
 </script>
@@ -1090,12 +1113,12 @@ function loadMyQuotes(){
 }
 window.loadMyQuotes=loadMyQuotes;
 
-function loadQuoteIntoApp(id){
+function loadQuoteIntoApp(id,goSummary){
   fetch('/api/quotes/'+id)
     .then(function(r){return r.json();})
     .then(function(q){
       if(typeof restoreQuote==='function')restoreQuote(q);
-      navTo('vm');
+      navTo(goSummary?'summary':'vm');
     })
     .catch(function(){alert('Failed to load quote.');});
 }
@@ -1303,7 +1326,7 @@ function loadAdminPanel(){
         +'</tr></thead><tbody>'
         +quotes.map(function(q){
           return '<tr>'
-            +'<td style="font-weight:600">'+(q.opportunityName||'—')+'</td>'
+            +'<td style="font-weight:600">'+(q.opportunityName?'<a href="#" style="color:var(--cs-green);text-decoration:none" onclick="adminOpenQuote(event,''+q.opportunityId+'')">'+q.opportunityName+'</a>':'—')+'</td>'
             +'<td>'+(q.customer||'—')+'</td>'
             +'<td style="color:var(--blue);font-size:.75rem">'+(q.ownerEmail||'—')+'</td>'
             +'<td style="font-size:.75rem">'+(q.location||'—')+'</td>'
@@ -1320,6 +1343,8 @@ function loadAdminPanel(){
       if(el)el.innerHTML='<div style="color:var(--red)">Failed to load quotes.</div>';
     });
 }
+function adminOpenQuote(e,id){e.preventDefault();loadQuoteIntoApp(id,true);}
+window.adminOpenQuote=adminOpenQuote;
 window.loadAdminPanel=loadAdminPanel;
 
 function setUserRole(userId,role){
