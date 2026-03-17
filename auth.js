@@ -58,6 +58,8 @@ passport.deserializeUser(async (id, done) => {
 
 // ── Session middleware factory ─────────────────────────────────────────
 function sessionMiddleware(app) {
+  // Trust Cloudflare / reverse-proxy so req.secure and req.ip work correctly
+  app.set('trust proxy', 1);
   app.use(session({
     secret:            process.env.SESSION_SECRET || 'iqt-secret-change-me',
     resave:            false,
@@ -65,6 +67,7 @@ function sessionMiddleware(app) {
     cookie: {
       maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
+      secure:   'auto', // send Secure flag when request is HTTPS (via proxy)
       sameSite: 'lax',
     },
   }));
