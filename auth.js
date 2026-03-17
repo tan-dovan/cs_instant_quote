@@ -64,7 +64,7 @@ function sessionMiddleware(app) {
     name:              'iqt.sid',
     secret:            process.env.SESSION_SECRET || 'iqt-secret-change-me',
     resave:            false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: {
       maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
