@@ -68,7 +68,7 @@ function sessionMiddleware(app) {
     cookie: {
       maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure:   false, // nginx/Cloudflare terminates SSL; Node receives plain HTTP
+      secure:   false, // nginx terminates SSL; Node gets plain HTTP from proxy
       sameSite: 'lax',
     },
   }));
