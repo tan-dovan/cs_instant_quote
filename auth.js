@@ -103,7 +103,10 @@ function authRoutes(app) {
   // OAuth callback
   app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/login.html?error=1' }),
-    (req, res) => res.redirect('/')
+    (req, res) => {
+      console.log('[AUTH-CB] user:', req.user ? req.user.email : 'none', '| sessionID:', req.sessionID ? req.sessionID.substring(0,8) : 'none', '| isAuthed:', req.isAuthenticated ? req.isAuthenticated() : false);
+      res.redirect('/');
+    }
   );
 
   // Logout

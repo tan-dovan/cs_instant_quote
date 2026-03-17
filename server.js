@@ -18,6 +18,15 @@ app.use(express.json());
 // Session + Passport (must be before static so login page works)
 sessionMiddleware(app);
 
+// Request logger (auth routes only)
+app.use(function(req, res, next) {
+  if (req.path.startsWith('/auth/') || req.path === '/api/me' || req.path === '/api/debug-session') {
+    const sid = req.sessionID ? req.sessionID.substring(0, 8) : 'none';
+    console.log('[REQ]', req.method, req.path, '| session:', sid, '| authed:', req.isAuthenticated ? req.isAuthenticated() : false, '| cookie-keys:', Object.keys(req.cookies || {}));
+  }
+  next();
+});
+
 // Public static files (login.html served without auth)
 app.use(express.static(path.join(__dirname, 'public')));
 
