@@ -18,14 +18,7 @@ app.use(express.json());
 // Session + Passport (must be before static so login page works)
 sessionMiddleware(app);
 
-// Request logger (auth routes only)
-app.use(function(req, res, next) {
-  if (req.path.startsWith('/auth/') || req.path === '/api/me' || req.path === '/api/debug-session') {
-    const sid = req.sessionID ? req.sessionID.substring(0, 8) : 'none';
-    console.log('[REQ]', req.method, req.path, '| session:', sid, '| authed:', req.isAuthenticated ? req.isAuthenticated() : false, '| cookie-keys:', Object.keys(req.cookies || {}));
-  }
-  next();
-});
+
 
 // Public static files (login.html served without auth)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -70,18 +63,7 @@ app.get('/api/git-info', (req, res) => {
   res.json(getGitInfo());
 });
 
-// Temporary debug: check session + headers (remove after debugging)
-app.get('/api/debug-session', (req, res) => {
-  res.json({
-    secure: req.secure,
-    proto: req.headers['x-forwarded-proto'],
-    host: req.headers['host'],
-    sessionID: req.sessionID,
-    isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
-    user: req.user ? { email: req.user.email, role: req.user.role } : null,
-    cookies: Object.keys(req.cookies || {}),
-  });
-});
+
 
 // ─── Admin Price Overrides (persist to JSON file) ───────────────────────
 const OVERRIDES_FILE = path.join(__dirname, 'price_overrides.json');

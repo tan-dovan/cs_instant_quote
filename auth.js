@@ -104,8 +104,7 @@ function authRoutes(app) {
   app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/login.html?error=1' }),
     (req, res) => {
-      console.log('[AUTH-CB] user:', req.user ? req.user.email : 'none', '| sessionID:', req.sessionID ? req.sessionID.substring(0,8) : 'none', '| isAuthed:', req.isAuthenticated ? req.isAuthenticated() : false);
-      // After auth, redirect to the public-facing domain (handles Cloudflare bypass flow)
+      // Redirect to public-facing domain (handles Cloudflare bypass flow)
       const appUrl = process.env.APP_URL || '/';
       res.redirect(appUrl);
     }
