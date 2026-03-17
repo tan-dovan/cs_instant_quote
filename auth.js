@@ -58,16 +58,17 @@ passport.deserializeUser(async (id, done) => {
 
 // ── Session middleware factory ─────────────────────────────────────────
 function sessionMiddleware(app) {
-  // Trust Cloudflare / reverse-proxy so req.secure and req.ip work correctly
+  // Trust reverse-proxy (nginx/Cloudflare) for X-Forwarded-* headers
   app.set('trust proxy', 1);
   app.use(session({
+    name:              'iqt.sid',
     secret:            process.env.SESSION_SECRET || 'iqt-secret-change-me',
     resave:            false,
     saveUninitialized: false,
     cookie: {
       maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure:   true,  // required for HTTPS behind Cloudflare (trust proxy must be set)
+      secure:   false, // nginx/Cloudflare terminates SSL; Node receives plain HTTP
       sameSite: 'lax',
     },
   }));
