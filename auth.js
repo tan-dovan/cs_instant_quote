@@ -67,7 +67,7 @@ function sessionMiddleware(app) {
     cookie: {
       maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure:   'auto', // send Secure flag when request is HTTPS (via proxy)
+      secure:   true,  // required for HTTPS behind Cloudflare (trust proxy must be set)
       sameSite: 'lax',
     },
   }));
