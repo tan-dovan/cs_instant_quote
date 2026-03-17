@@ -749,30 +749,48 @@ function dpEurToDisplay(eurVal){
   var usdVal=eurVal*eurToUsd;
   return usdVal/(FX[displayCurrency]||1);
 }
+
+// Sub-group header helper
+function dpSubHeader(emoji,title,badge,badgeColor){
+  return '<div style="display:flex;align-items:center;gap:.5rem;margin:1rem 0 .5rem;padding:.4rem .6rem;'
+    +'background:var(--bg-input);border-radius:6px;border-left:3px solid '+(badgeColor||'var(--cs-green)')+';">'
+    +'<span style="font-size:1rem">'+emoji+'</span>'
+    +'<span style="font-weight:700;font-size:.85rem;color:var(--text-heading)">'+title+'</span>'
+    +'<span style="margin-left:auto;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:8px;'
+    +'background:'+(badgeColor||'var(--cs-green)')+';color:#fff">'+badge+'</span>'
+    +'</div>';
+}
+
 function buildDpPanel(){
   var el=$('panel-dp');if(!el)return;
   var h='';
-  h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">All Data Protection prices are in EUR (converted to display currency)</div>';
+  h+='<div style="margin-bottom:.75rem;font-size:.82rem;color:var(--text-secondary)">Prices in EUR, converted to display currency. Subgroups show applicable billing model.</div>';
 
-  h+='<div class="vm-row"><div class="vm-row-label">Migration</div>';
+  // ── Migration subgroup ────────────────────────────────────────────
+  h+=dpSubHeader('🚚','Migration','Upfront (one-time)','var(--orange)');
+  h+='<div class="vm-row"><div class="vm-row-label">Migration Units</div>';
   h+='<div class="vm-row-input"><input type="number" id="dp_migration" min="0" max="1000" value="'+dpState.migration+'"> <span class="vm-row-unit">units</span></div>';
-  h+=priceCell(0,dpEurToDisplay(dpState.migration*DP_PRICE.migration),'pb_dp_migration','pb_dp_migration')+'</div>';
+  h+=priceCell(0,dpEurToDisplay(dpState.migration*DP_PRICE.migration),'pb_dp_mig_sub','pb_dp_mig_burst')+'</div>';
 
-  h+='<div class="vm-row"><div class="vm-row-label">Backup</div>';
+  // ── Backup subgroup ───────────────────────────────────────────────
+  h+=dpSubHeader('💾','Backup','Subscription only','var(--blue)');
+  h+='<div class="vm-row"><div class="vm-row-label">Backup Units</div>';
   h+='<div class="vm-row-input"><input type="number" id="dp_backup" min="0" max="1000" value="'+dpState.backup+'"> <span class="vm-row-unit">units</span></div>';
-  h+=priceCell(dpEurToDisplay(dpState.backup*DP_PRICE.backup),0,'pb_dp_backup','pb_dp_backup')+'</div>';
+  h+=priceCell(dpEurToDisplay(dpState.backup*DP_PRICE.backup),0,'pb_dp_bak_sub','pb_dp_bak_burst')+'</div>';
 
   h+='<div class="vm-row"><div class="vm-row-label">Backup Capacity</div>';
   h+='<div class="vm-row-input"><input type="number" id="dp_backupCapacity" min="0" max="100000" step="100" value="'+dpState.backupCapacity+'"> <span class="vm-row-unit">GB</span></div>';
-  h+=priceCell(dpEurToDisplay(dpState.backupCapacity*DP_PRICE.backupCapacity),0,'pb_dp_backupCap','pb_dp_backupCap')+'</div>';
+  h+=priceCell(dpEurToDisplay(dpState.backupCapacity*DP_PRICE.backupCapacity),0,'pb_dp_bakCap_sub','pb_dp_bakCap_burst')+'</div>';
 
-  h+='<div class="vm-row"><div class="vm-row-label">DR (Disaster Recovery)</div>';
+  // ── Disaster Recovery subgroup ────────────────────────────────────
+  h+=dpSubHeader('🔁','Disaster Recovery','Subscription only','var(--cs-green)');
+  h+='<div class="vm-row"><div class="vm-row-label">DR Units</div>';
   h+='<div class="vm-row-input"><input type="number" id="dp_dr" min="0" max="1000" value="'+dpState.dr+'"> <span class="vm-row-unit">units</span></div>';
-  h+=priceCell(dpEurToDisplay(dpState.dr*DP_PRICE.dr),0,'pb_dp_dr','pb_dp_dr')+'</div>';
+  h+=priceCell(dpEurToDisplay(dpState.dr*DP_PRICE.dr),0,'pb_dp_dr_sub','pb_dp_dr_burst')+'</div>';
 
   h+='<div class="vm-row"><div class="vm-row-label">DR Capacity</div>';
   h+='<div class="vm-row-input"><input type="number" id="dp_drCapacity" min="0" max="100000" step="100" value="'+dpState.drCapacity+'"> <span class="vm-row-unit">GB</span></div>';
-  h+=priceCell(dpEurToDisplay(dpState.drCapacity*DP_PRICE.drCapacity),0,'pb_dp_drCap','pb_dp_drCap')+'</div>';
+  h+=priceCell(dpEurToDisplay(dpState.drCapacity*DP_PRICE.drCapacity),0,'pb_dp_drCap_sub','pb_dp_drCap_burst')+'</div>';
 
   el.innerHTML=h;
 
@@ -782,12 +800,18 @@ function buildDpPanel(){
     dpState.backupCapacity=parseInt($('dp_backupCapacity').value)||0;
     dpState.dr=parseInt($('dp_dr').value)||0;
     dpState.drCapacity=parseInt($('dp_drCapacity').value)||0;
-    function s(id,v){var e=$(id);if(e)e.textContent=fmt(v);}
-    s('pb_dp_migration',dpEurToDisplay(dpState.migration*DP_PRICE.migration)); s('pb_dp_migration',dpEurToDisplay(dpState.migration*DP_PRICE.migration));
-    s('pb_dp_backup',dpEurToDisplay(dpState.backup*DP_PRICE.backup)); s('pb_dp_backup',dpEurToDisplay(0));
-    s('pb_dp_backupCap',dpEurToDisplay(dpState.backupCapacity*DP_PRICE.backupCapacity)); s('pb_dp_backupCap',dpEurToDisplay(0));
-    s('pb_dp_dr',dpEurToDisplay(dpState.dr*DP_PRICE.dr)); s('pb_dp_dr',dpEurToDisplay(0));
-    s('pb_dp_drCap',dpEurToDisplay(dpState.drCapacity*DP_PRICE.drCapacity)); s('pb_dp_drCap',dpEurToDisplay(0));
+    function s(subId,burstId,subVal,burstVal){
+      var se=$(subId);if(se)se.textContent=fmt(subVal);
+      var be=$(burstId);if(be)be.textContent=fmt(burstVal);
+    }
+    // Migration = upfront → shown in burst column (orange)
+    s('pb_dp_mig_sub','pb_dp_mig_burst',0,dpEurToDisplay(dpState.migration*DP_PRICE.migration));
+    // Backup = subscription (monthly) → shown in sub column
+    s('pb_dp_bak_sub','pb_dp_bak_burst',dpEurToDisplay(dpState.backup*DP_PRICE.backup),0);
+    s('pb_dp_bakCap_sub','pb_dp_bakCap_burst',dpEurToDisplay(dpState.backupCapacity*DP_PRICE.backupCapacity),0);
+    // DR = subscription (monthly) → shown in sub column
+    s('pb_dp_dr_sub','pb_dp_dr_burst',dpEurToDisplay(dpState.dr*DP_PRICE.dr),0);
+    s('pb_dp_drCap_sub','pb_dp_drCap_burst',dpEurToDisplay(dpState.drCapacity*DP_PRICE.drCapacity),0);
     recalc();
   }
   ['dp_migration','dp_backup','dp_backupCapacity','dp_dr','dp_drCapacity'].forEach(function(id){
@@ -1668,6 +1692,9 @@ function renderOverrides(ov){
 window.delOverride=async function(loc,r){await fetch('/api/admin/overrides/'+loc+'/'+r,{method:'DELETE'});var res=await fetch('/api/admin/overrides');renderOverrides(await res.json());await onLocationChange()};
 
 /* ────── Save Quote to backend ────── */
+// _savedQuoteId tracks the current loaded/saved quote ID to avoid opportunityId drift
+var _savedQuoteId=null;
+
 async function saveQuote(){
   var data=collectQuoteData();
   var statusEl=$('saveStatus');
@@ -1675,12 +1702,22 @@ async function saveQuote(){
   if(btn)btn.disabled=true;
   if(statusEl)statusEl.innerHTML='<span style="color:var(--text-secondary)">Saving...</span>';
   try{
-    var res=await fetch('/api/quotes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    var isUpdate=!!_savedQuoteId;
+    var url=isUpdate?'/api/quotes/'+_savedQuoteId:'/api/quotes';
+    var method=isUpdate?'PUT':'POST';
+    // Always send the canonical ID: existing quote ID on update, current opportunityId on create
+    data.opportunityId=isUpdate?_savedQuoteId:opportunityId;
+    var res=await fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     var result=await res.json();
     if(res.ok){
-      if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">\u2713 Saved ('+result.opportunityId.substring(0,8)+'...)</span>';
+      // Track the saved ID so subsequent saves go to PUT
+      _savedQuoteId=result.opportunityId||data.opportunityId;
+      opportunityId=_savedQuoteId;
+      if($('quoteOpportunityId'))$('quoteOpportunityId').value=opportunityId;
+      var label=isUpdate?'Updated':'Saved';
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">\u2713 '+label+' ('+result.opportunityId.substring(0,8)+'...)</span>';
     }else{
-      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 '+( result.error||'Save failed')+'</span>';
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 '+(result.error||'Save failed')+'</span>';
     }
   }catch(e){
     if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">\u2717 Network error</span>';
@@ -1778,8 +1815,9 @@ async function loadQuote(id){
       displayCurrency=csel.value;
     }
 
-    // Restore opportunity ID
+    // Restore opportunity ID — also track as saved ID to enable PUT on next save
     opportunityId=q.opportunityId||opportunityId;
+    _savedQuoteId=opportunityId;
     if($('quoteOpportunityId'))$('quoteOpportunityId').value=opportunityId;
 
     // Restore customer, opportunity name, notes
