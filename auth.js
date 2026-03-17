@@ -103,11 +103,7 @@ function authRoutes(app) {
   // OAuth callback
   app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/login.html?error=1' }),
-    (req, res) => {
-      // Redirect to public-facing domain (handles Cloudflare bypass flow)
-      const appUrl = process.env.APP_URL || '/';
-      res.redirect(appUrl);
-    }
+    (req, res) => res.redirect('/')
   );
 
   // Logout
