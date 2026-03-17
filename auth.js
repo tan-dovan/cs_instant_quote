@@ -70,6 +70,7 @@ function sessionMiddleware(app) {
       httpOnly: true,
       secure:   false, // nginx terminates SSL; Node gets plain HTTP from proxy
       sameSite: 'lax',
+      domain:   process.env.COOKIE_DOMAIN || undefined,
     },
   }));
   app.use(passport.initialize());
