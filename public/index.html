@@ -270,6 +270,15 @@
       padding:.45rem 1.5rem;display:flex;align-items:center;gap:1.25rem;
       flex-wrap:wrap;position:sticky;top:0;z-index:90;
     }
+    #quoteMetaBar{
+      background:var(--bg-card);border-bottom:1px solid var(--border-color);
+      padding:.3rem 1.5rem;display:none;align-items:center;gap:.5rem;
+      position:sticky;top:41px;z-index:89;flex-wrap:wrap;
+    }
+    #quoteMetaBar.visible{display:flex}
+    #quoteMetaBar .qmb-label{font-size:.68rem;color:var(--text-secondary);white-space:nowrap}
+    #quoteMetaBar .qmb-value{font-size:.8rem;font-weight:700;color:var(--text-heading);white-space:nowrap}
+    #quoteMetaBar .qmb-sep{color:var(--border-color);font-size:.9rem;margin:0 .15rem}
     #locBar label{margin:0;font-size:.75rem;white-space:nowrap;color:var(--text-secondary)}
     #locBar select{padding:.28rem .45rem;font-size:.8rem}
     #locBar #currencyInfo{font-size:.75rem;color:var(--text-secondary);white-space:nowrap}
@@ -486,6 +495,18 @@
       <button class="locbar-btn locbar-btn-pdf" onclick="exportPDF()" title="Export PDF">📄 PDF</button>
       <button class="locbar-btn locbar-btn-json" onclick="exportJSON()" title="Export JSON">📋 JSON</button>
     </div>
+  </div>
+
+  <!-- Quote meta bar (shows below locBar when a quote is loaded) -->
+  <div id="quoteMetaBar">
+    <span class="qmb-label">Quote</span>
+    <span class="qmb-value" id="qmbQuoteName">—</span>
+    <span class="qmb-sep">·</span>
+    <span class="qmb-label">Customer</span>
+    <span class="qmb-value" id="qmbCustomer">—</span>
+    <span class="qmb-sep">·</span>
+    <span class="qmb-label">Opportunity</span>
+    <span class="qmb-value" id="qmbOpportunity">—</span>
   </div>
 
   <!-- Pages -->
@@ -900,6 +921,16 @@ function syncSidebarTotals(){
   if(topName){topName.textContent=quoteLabel;}
   if(topCust){topCust.textContent=custVal||'';}
   if(topOpp){topOpp.textContent=oppVal||'';}
+  // quote meta bar (below locbar)
+  var qmb=document.getElementById('quoteMetaBar');
+  var qmbQ=document.getElementById('qmbQuoteName');
+  var qmbC=document.getElementById('qmbCustomer');
+  var qmbO=document.getElementById('qmbOpportunity');
+  var quoteNameVal=oppVal||custVal||'';
+  if(qmbQ)qmbQ.textContent=quoteNameVal||'—';
+  if(qmbC)qmbC.textContent=custVal||'—';
+  if(qmbO)qmbO.textContent=oppVal||'—';
+  if(qmb){if(quoteNameVal||custVal||oppVal){qmb.classList.add('visible');}else{qmb.classList.remove('visible');}}
 }
 setInterval(syncSidebarTotals,300);
 </script>
