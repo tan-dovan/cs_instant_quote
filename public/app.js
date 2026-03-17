@@ -1113,14 +1113,41 @@ function calcTaas(){
 /* ────── Kubernetes ────── */
 // K8s pricing: node compute billed via CloudSigma VM rates (intel CPU + RAM)
 // Storage: billed as NVMe (or SSD fallback) per GB/month
-var K8S_VCPU_PRICE_HR=0.007;  // USD/vCPU/hour (approximates intel_cpu subscription)
-var K8S_RAM_PRICE_HR=0.004;   // USD/GB RAM/hour
-var K8S_STORAGE_PRICE_MO=0.10; // USD/GB/month (NVMe persistent volume)
+// K8s uses live CloudSigma VM prices (same as Virtual Machines)
+// Prices are derived from csSubPrice/csBurstPrice at runtime — constants are fallbacks
+var K8S_VCPU_PRICE_HR=0.007;
+var K8S_RAM_PRICE_HR=0.004;
+var K8S_STORAGE_PRICE_MO=0.10;
+function k8sSubPrice(){
+  // nodes * (vcpu * intel_cpu_sub/hr + ram * intel_mem_sub/hr) * 730 + storage * dssd_sub
+  var vcpuS=csSubPrice('intel_cpu');var ramS=csSubPrice('intel_mem');var stoS=csSubPrice('dssd');
+  return{vcpu:vcpuS||K8S_VCPU_PRICE_HR,ram:ramS||K8S_RAM_PRICE_HR,storage:stoS||K8S_STORAGE_PRICE_MO};
+}
+function k8sBurstPrice(){
+  var vcpuB=csBurstPrice('intel_cpu');var ramB=csBurstPrice('intel_mem');var stoB=csBurstPrice('dssd');
+  return{vcpu:vcpuB||K8S_VCPU_PRICE_HR*1.3,ram:ramB||K8S_RAM_PRICE_HR*1.3,storage:stoB||K8S_STORAGE_PRICE_MO*1.3};
+}
+function calcK8sSub(){
+  if(k8sState.nodes<=0)return 0;
+  var p=k8sSubPrice();
+  return k8sState.nodes*(k8sState.vcpu*p.vcpu+k8sState.ram*p.ram)*730+k8sState.storageGB*p.storage;
+}
+function calcK8sBurst(){
+  if(k8sState.nodes<=0)return 0;
+  var p=k8sBurstPrice();
+  return k8sState.nodes*(k8sState.vcpu*p.vcpu+k8sState.ram*p.ram)*730+k8sState.storageGB*p.storage;
+}
 
 function buildK8sPanel(){
   var el=$('panel-k8s');if(!el)return;
+  var pS=k8sSubPrice(),pB=k8sBurstPrice();
+  var cSub=k8sState.nodes*(k8sState.vcpu*pS.vcpu+k8sState.ram*pS.ram)*730;
+  var cBurst=k8sState.nodes*(k8sState.vcpu*pB.vcpu+k8sState.ram*pB.ram)*730;
+  var sSub=k8sState.storageGB*pS.storage;
+  var sBurst=k8sState.storageGB*pB.storage;
   var h='';
-  h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">Kubernetes cluster sizing. Pricing is based on CloudSigma compute rates for worker nodes plus persistent storage.</div>';
+  h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">Kubernetes cluster sizing — priced at CloudSigma VM rates (Intel vCPU + RAM + SSD), subscription &amp; burst.</div>';
+  h+='<div class="price-col-headers" style="max-width:200px;margin-left:auto"><div class="price-col-hdr sub">📗 Subscription</div><div class="price-col-hdr burst">📙 Burst</div></div>';
 
   h+='<div class="vm-row"><div class="vm-row-label">Worker Nodes '+infoBubble('k8s_nodes')+'</div>';
   h+='<div class="vm-row-input"><input type="number" id="k8s_nodes" min="0" max="500" step="1" value="'+k8sState.nodes+'"> <span class="vm-row-unit">nodes</span></div>';
@@ -1134,21 +1161,21 @@ function buildK8sPanel(){
   h+='<div class="vm-row-input"><input type="number" id="k8s_ram" min="1" max="1024" step="1" value="'+k8sState.ram+'"> <span class="vm-row-unit">GB</span></div>';
   h+='<div style="flex:1"></div></div>';
 
+  h+='<div class="vm-row"><div class="vm-row-label">Compute (all nodes)</div>';
+  h+='<div style="flex:1"></div>';
+  h+=priceCell(cSub,cBurst,'pk8s_compute_sub','pk8s_compute_burst')+'</div>';
+
   h+='<div class="vm-row"><div class="vm-row-label">Persistent Storage '+infoBubble('k8s_storage')+'</div>';
   h+='<div class="vm-row-input"><input type="number" id="k8s_storageGB" min="0" max="500000" step="100" value="'+k8sState.storageGB+'"> <span class="vm-row-unit">GB</span></div>';
-  h+=burstOnlyCell(0,'pb_k8s_sto')+'</div>';
+  h+=priceCell(sSub,sBurst,'pk8s_sto_sub','pk8s_sto_burst')+'</div>';
 
-  var computeMo=k8sState.nodes*((k8sState.vcpu*K8S_VCPU_PRICE_HR)+(k8sState.ram*K8S_RAM_PRICE_HR))*730;
-  var storageMo=k8sState.storageGB*K8S_STORAGE_PRICE_MO;
   h+='<div id="k8s_summary" style="margin-top:.5rem;font-size:.75rem;color:var(--text-secondary)">';
   if(k8sState.nodes>0){
-    h+='<strong>'+k8sState.nodes+'</strong> node(s) &times; '+(k8sState.vcpu)+' vCPU / '+(k8sState.ram)+' GB RAM';
-    h+=' &bull; Compute: <strong>'+fmt(computeMo)+'</strong>/mo';
-    if(storageMo>0)h+=' &bull; Storage: <strong>'+fmt(storageMo)+'</strong>/mo';
-    h+=' &bull; <strong>Total: '+fmt(computeMo+storageMo)+'</strong>/mo';
+    h+='<strong>'+k8sState.nodes+'</strong> node(s) × '+k8sState.vcpu+' vCPU / '+k8sState.ram+' GB';
+    h+=' &bull; Sub: <strong>'+fmt(cSub+sSub)+'</strong>/mo';
+    h+=' &bull; Burst: <strong>'+fmt(cBurst+sBurst)+'</strong>/mo';
   }
   h+='</div>';
-
   el.innerHTML=h;
 
   function updateK8s(){
@@ -1156,16 +1183,19 @@ function buildK8sPanel(){
     k8sState.vcpu=parseInt($('k8s_vcpu').value)||1;
     k8sState.ram=parseInt($('k8s_ram').value)||1;
     k8sState.storageGB=parseInt($('k8s_storageGB').value)||0;
-    var cMo=k8sState.nodes*((k8sState.vcpu*K8S_VCPU_PRICE_HR)+(k8sState.ram*K8S_RAM_PRICE_HR))*730;
-    var sMo=k8sState.storageGB*K8S_STORAGE_PRICE_MO;
-    var e=$('pb_k8s_sto');if(e)e.textContent=fmt(sMo);
+    var pS2=k8sSubPrice(),pB2=k8sBurstPrice();
+    var cS2=k8sState.nodes*(k8sState.vcpu*pS2.vcpu+k8sState.ram*pS2.ram)*730;
+    var cB2=k8sState.nodes*(k8sState.vcpu*pB2.vcpu+k8sState.ram*pB2.ram)*730;
+    var sS2=k8sState.storageGB*pS2.storage;var sB2=k8sState.storageGB*pB2.storage;
+    function sv(id,v){var e=$(id);if(e)e.textContent=fmt(v);}
+    sv('pk8s_compute_sub',cS2);sv('pk8s_compute_burst',cB2);
+    sv('pk8s_sto_sub',sS2);sv('pk8s_sto_burst',sB2);
     var sum=$('k8s_summary');
     if(sum){
       if(k8sState.nodes>0){
-        sum.innerHTML='<strong>'+k8sState.nodes+'</strong> node(s) &times; '+k8sState.vcpu+' vCPU / '+k8sState.ram+' GB RAM'+
-          ' &bull; Compute: <strong>'+fmt(cMo)+'</strong>/mo'+
-          (sMo>0?' &bull; Storage: <strong>'+fmt(sMo)+'</strong>/mo':'')+
-          ' &bull; <strong>Total: '+fmt(cMo+sMo)+'</strong>/mo';
+        sum.innerHTML='<strong>'+k8sState.nodes+'</strong> node(s) × '+k8sState.vcpu+' vCPU / '+k8sState.ram+' GB'
+          +' &bull; Sub: <strong>'+fmt(cS2+sS2)+'</strong>/mo'
+          +' &bull; Burst: <strong>'+fmt(cB2+sB2)+'</strong>/mo';
       }else{sum.innerHTML='';}
     }
     recalc();
@@ -1175,12 +1205,7 @@ function buildK8sPanel(){
   });
 }
 
-function calcK8s(){
-  if(k8sState.nodes<=0)return 0;
-  var computeMo=k8sState.nodes*((k8sState.vcpu*K8S_VCPU_PRICE_HR)+(k8sState.ram*K8S_RAM_PRICE_HR))*730;
-  var storageMo=k8sState.storageGB*K8S_STORAGE_PRICE_MO;
-  return computeMo+storageMo;
-}
+function calcK8s(){return calcK8sSub();}  // legacy alias used in addBurstOnlyItems
 
 /* ────── Calc ────── */
 function calcCSMode(priceFn){
@@ -1208,24 +1233,39 @@ function calcCSMode(priceFn){
   var total=0;for(var k in bd)total+=bd[k];return{total:total,breakdown:bd};
 }
 function addBurstOnlyItems(r){
-  // Data Protection - split into upfront vs subscription
+  // Data Protection — upfront (Migration) stays separate; Backup+DR are subscription
   var dpUpfront=calcDpUpfront();
   var dpSubscription=calcDpSubscription();
-  if(dpUpfront>0){r.breakdown['🛡️ Data Protection (Upfront)']=dpUpfront;r.total+=dpUpfront;}
-  if(dpSubscription>0){r.breakdown['🛡️ Data Protection (Subscription)']=dpSubscription;r.total+=dpSubscription;}
+  if(dpUpfront>0){r.breakdown['\uD83D\uDEE1\uFE0F Data Protection (Upfront)']=dpUpfront;r.total+=dpUpfront;}
+  if(dpSubscription>0){r.breakdown['\uD83D\uDEE1\uFE0F Data Protection (Sub)']=dpSubscription;r.total+=dpSubscription;}
   var paasT=calcPaas();if(paasT>0){r.breakdown['\u2601\uFE0F PaaS']=paasT;r.total+=paasT;}
   var ofT=calcOmnifabric();if(ofT>0){r.breakdown['\uD83D\uDDC4\uFE0F Omnifabric']=ofT;r.total+=ofT;}
   var taasT=calcTaas();if(taasT>0){r.breakdown['\uD83E\uDD16 TaaS']=taasT;r.total+=taasT;}
-  var k8sT=calcK8s();if(k8sT>0){r.breakdown['\u2388\uFE0F Kubernetes']=k8sT;r.total+=k8sT;}
+  // K8s: subscription portion added to sub total, burst portion added separately
+  var k8sSub=calcK8sSub();var k8sBurst=calcK8sBurst();
+  if(k8sSub>0){r.breakdown['\u2388\uFE0F Kubernetes']=k8sSub;r.total+=k8sSub;}
+  r._k8sBurstExtra=k8sBurst-k8sSub; // burst premium on top of sub
   return r;
 }
-function calcCS(){return calcCSMode(csSubPrice);}
-function calcCSBurst(){return calcCSMode(csBurstPrice);}
+function calcCS(){
+  var r=calcCSMode(csSubPrice);
+  // Add K8s sub + DP sub to subscription total
+  var k8sS=calcK8sSub();if(k8sS>0){r.breakdown['\u2388\uFE0F Kubernetes']=k8sS;r.total+=k8sS;}
+  var dpS=calcDpSubscription();if(dpS>0){r.breakdown['\uD83D\uDEE1\uFE0F Data Protection (Sub)']=dpS;r.total+=dpS;}
+  return r;
+}
+function calcCSBurst(){
+  var r=calcCSMode(csBurstPrice);
+  var k8sB=calcK8sBurst();if(k8sB>0){r.breakdown['\u2388\uFE0F Kubernetes']=k8sB;r.total+=k8sB;}
+  var dpS=calcDpSubscription();if(dpS>0){r.breakdown['\uD83D\uDEE1\uFE0F Data Protection (Sub)']=dpS;r.total+=dpS;}
+  return r;
+}
 function calcCSSmart(){
   var r=addBurstOnlyItems(calcCSMode(csSmartPrice));
+  var dpUp=calcDpUpfront();if(dpUp>0)r.upfront=(r.upfront||0)+dpUp;
   r.subTotal=calcCS().total;
+  r.burstTotal=Math.max(0,r.total-r.subTotal+(r._k8sBurstExtra||0));
   r.upfront=r.upfront||0;
-  r.burstTotal=r.total-r.subTotal;
   return r;
 }
 
@@ -1265,11 +1305,14 @@ function recalc(){
   if(stS)stS.textContent=fmt(csSmart.subTotal);
   if(stB)stB.textContent=fmt(csSmart.burstTotal);
   if(stC)stC.textContent=fmt(csSmart.total);
-  // Sidebar mini totals
-  var sbS=$('sidebarTotalSub'),sbB=$('sidebarTotalBurst'),sbC=$('sidebarTotalCombined');
-  if(sbS)sbS.textContent=fmt(csSmart.subTotal);
-  if(sbB)sbB.textContent=fmt(csSmart.burstTotal);
-  if(sbC)sbC.textContent=fmt(csSmart.total);
+  // Locbar totals (direct update — no poll lag)
+  var ls=$('locbarTotalSub'),lb=$('locbarTotalBurst'),lc=$('locbarTotalCombined');
+  if(ls)ls.textContent=fmt(csSmart.subTotal);
+  if(lb)lb.textContent=fmt(csSmart.burstTotal);
+  if(lc)lc.textContent=fmt(csSmart.total);
+  // Locbar quote name
+  var opp=$('quoteOpportunity'),cust=$('quoteCustomer'),nameEl=$('locbarQuoteName');
+  if(nameEl){var lbl=(opp&&opp.value.trim())||(cust&&cust.value.trim())||'';nameEl.textContent=lbl?'\uD83D\uDCC4 '+lbl:'';nameEl.title=lbl;}
   // VM page sub-totals
   var vmSub=$('vmTotalSub'),vmBurst=$('vmTotalBurst');
   if(vmSub){var vsub=0;vmLines.forEach(function(vm){var q=vm.qty||1,cpuR=cpuResForVm(vm),memR=memResForVm(vm);vsub+=q*(vm.cpu*(vm.cpuSpeed||2)*csSubPrice(cpuR)*730+vm.ram*csSubPrice(memR)*730);vm.disks.forEach(function(d){vsub+=q*d.size*csSubPrice(d.type);});});if(vmSub)vmSub.textContent=fmt(vsub);}

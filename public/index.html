@@ -417,14 +417,11 @@
     <a href="/auth/logout" title="Sign out" style="color:var(--text-secondary);font-size:.75rem;text-decoration:none;flex-shrink:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-secondary)'">⏻</a>
   </div>
 
-  <!-- Mini totals in sidebar -->
-  <div style="padding:.75rem 1rem;border-top:1px solid var(--sidebar-border);font-size:.75rem">
-    <div style="color:var(--text-secondary);font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Monthly Total</div>
-    <div style="display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap">
-      <div><span style="color:var(--green);font-weight:700;font-size:.9rem" id="sidebarTotalSub">$0.00</span><span style="color:var(--text-secondary);font-size:.6rem"> sub</span></div>
-      <div><span style="color:var(--orange);font-weight:700;font-size:.9rem" id="sidebarTotalBurst">$0.00</span><span style="color:var(--text-secondary);font-size:.6rem"> burst</span></div>
-    </div>
-    <div style="color:var(--cs-green);font-weight:700;font-size:1.1rem;margin-top:.1rem" id="sidebarTotalCombined">$0.00</div>
+  <!-- Hidden IDs kept for JS compat -->
+  <div style="display:none">
+    <span id="sidebarTotalSub"></span>
+    <span id="sidebarTotalBurst"></span>
+    <span id="sidebarTotalCombined"></span>
   </div>
 
   <div class="sidebar-footer">
@@ -463,8 +460,16 @@
     </div>
     <div id="currencyInfo">—</div>
     <div class="locbar-actions">
+      <div id="locbarQuoteInfo" style="display:flex;flex-direction:column;align-items:flex-end;gap:.1rem;margin-right:.5rem">
+        <span id="locbarQuoteName" style="font-size:.72rem;font-weight:700;color:var(--text-heading);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis" title=""></span>
+        <div style="display:flex;gap:.6rem;align-items:baseline">
+          <span style="font-size:.62rem;color:var(--green)">Sub <span id="locbarTotalSub" style="font-weight:700">$0.00</span></span>
+          <span style="font-size:.62rem;color:var(--orange)">Burst <span id="locbarTotalBurst" style="font-weight:700">$0.00</span></span>
+          <span style="font-size:.78rem;font-weight:700;color:var(--cs-green)" id="locbarTotalCombined">$0.00</span>
+        </div>
+      </div>
       <button class="locbar-btn locbar-btn-save" onclick="saveQuote()" title="Save Quote">💾 Save</button>
-      <button class="locbar-btn locbar-btn-load" onclick="loadQuoteList(); navTo('myquotes')" title="Load Quote">📂 Load</button>
+      <button class="locbar-btn locbar-btn-load" onclick="navTo('myquotes')" title="Load Quote">📂 Load</button>
       <button class="locbar-btn locbar-btn-pdf" onclick="exportPDF()" title="Export PDF">📄 PDF</button>
       <button class="locbar-btn locbar-btn-json" onclick="exportJSON()" title="Export JSON">📋 JSON</button>
     </div>
@@ -849,21 +854,28 @@ function closeSidebar(){
 window.openSidebar=openSidebar;
 window.closeSidebar=closeSidebar;
 
-// ── Sidebar totals sync ────────────────────────────────────────────────
-// Mirror recalc totals to sidebar mini display
-var _origRecalcDone=false;
+// ── Totals sync (locbar) ───────────────────────────────────────────────
 function syncSidebarTotals(){
   var sub=document.getElementById('sectionTotalSub');
   var burst=document.getElementById('sectionTotalBurst');
   var combined=document.getElementById('sectionTotalCombined');
-  var ss=document.getElementById('sidebarTotalSub');
-  var sb=document.getElementById('sidebarTotalBurst');
-  var sc=document.getElementById('sidebarTotalCombined');
-  if(ss&&sub)ss.textContent=sub.textContent;
-  if(sb&&burst)sb.textContent=burst.textContent;
-  if(sc&&combined)sc.textContent=combined.textContent;
+  // locbar totals
+  var ls=document.getElementById('locbarTotalSub');
+  var lb=document.getElementById('locbarTotalBurst');
+  var lc=document.getElementById('locbarTotalCombined');
+  if(ls&&sub)ls.textContent=sub.textContent;
+  if(lb&&burst)lb.textContent=burst.textContent;
+  if(lc&&combined)lc.textContent=combined.textContent;
+  // locbar quote name — read from the float panel inputs
+  var opp=document.getElementById('quoteOpportunity');
+  var cust=document.getElementById('quoteCustomer');
+  var nameEl=document.getElementById('locbarQuoteName');
+  if(nameEl){
+    var label=(opp&&opp.value.trim())||(cust&&cust.value.trim())||'';
+    nameEl.textContent=label?'📄 '+label:'';
+    nameEl.title=label;
+  }
 }
-// Poll every 300ms to sync (lightweight, no DOM mutation observer needed)
 setInterval(syncSidebarTotals,300);
 </script>
 <script src="app.js"></script>
