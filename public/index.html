@@ -278,6 +278,7 @@
     .locbar-btn{border:none;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:600;padding:.28rem .65rem;transition:opacity .15s,transform .1s;white-space:nowrap;font-family:inherit}
     .locbar-btn:hover{opacity:.85;transform:translateY(-1px)}
     .locbar-btn:active{transform:translateY(0)}
+    .locbar-btn-new{background:linear-gradient(135deg,#0e7490,#0891b2);color:#fff}
     .locbar-btn-save{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
     .locbar-btn-load{background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff}
     .locbar-btn-pdf{background:linear-gradient(135deg,#b45309,#d97706);color:#fff}
@@ -368,7 +369,7 @@
       <span class="nav-icon">🛡️</span> Admin
     </div>
 
-    <div class="nav-section-label">Configure &amp; Location</div>
+    <div class="nav-section-label">Configure</div>
     <div class="nav-item" data-page="vm" onclick="navTo('vm')">
       <span class="nav-icon">🖥️</span> Virtual Machines
     </div>
@@ -474,11 +475,12 @@
           <span id="locbarQuoteName" style="font-size:.72rem;font-weight:700;color:var(--text-heading);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis" title=""></span>
         </div>
         <div style="display:flex;gap:.6rem;align-items:baseline">
-          <span style="font-size:.62rem;color:var(--green)">Sub <span id="locbarTotalSub" style="font-weight:700">$0.00</span></span>
-          <span style="font-size:.62rem;color:var(--orange)">Burst <span id="locbarTotalBurst" style="font-weight:700">$0.00</span></span>
-          <span style="font-size:.78rem;font-weight:700;color:var(--cs-green)" id="locbarTotalCombined">$0.00</span>
+          <span style="font-size:.78rem;color:var(--green)">Sub <span id="locbarTotalSub" style="font-weight:800">$0.00</span></span>
+          <span style="font-size:.78rem;color:var(--orange)">Burst <span id="locbarTotalBurst" style="font-weight:800">$0.00</span></span>
+          <span style="font-size:1rem;font-weight:800;color:var(--cs-green)" id="locbarTotalCombined">$0.00</span>
         </div>
       </div>
+      <button class="locbar-btn locbar-btn-new" onclick="newQuote()" title="New Quote">✨ New</button>
       <button class="locbar-btn locbar-btn-save" onclick="saveQuote()" title="Save Quote">💾 Save</button>
       <button class="locbar-btn locbar-btn-load" onclick="navTo('myquotes')" title="Load Quote">📂 Load</button>
       <button class="locbar-btn locbar-btn-pdf" onclick="exportPDF()" title="Export PDF">📄 PDF</button>

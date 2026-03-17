@@ -396,10 +396,10 @@ function renderResourceTable(){
   // Kubernetes section
   h+=sectionHeader('\u2388\uFE0F Kubernetes',false);
   h+=groupHeader('\u26A1 Compute (per Node)');
-  h+='<tr><td style="padding-left:1.5rem">vCPU</td><td style="color:var(--text-secondary);font-size:.72rem">vCPU/hour</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(K8S_VCPU_PRICE_HR)+'</td></tr>';
-  h+='<tr><td style="padding-left:1.5rem">RAM</td><td style="color:var(--text-secondary);font-size:.72rem">GB/hour</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(K8S_RAM_PRICE_HR)+'</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">vCPU</td><td style="color:var(--text-secondary);font-size:.72rem">vCPU/hour</td><td style="color:var(--green)">'+fmtUnit(k8sSubPrice().vcpu)+'</td><td style="color:var(--text-secondary)">\u2014</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">RAM</td><td style="color:var(--text-secondary);font-size:.72rem">GB/hour</td><td style="color:var(--green)">'+fmtUnit(k8sSubPrice().ram)+'</td><td style="color:var(--text-secondary)">\u2014</td></tr>';
   h+=groupHeader('\uD83D\uDCBE Storage');
-  h+='<tr><td style="padding-left:1.5rem">Persistent Volume</td><td style="color:var(--text-secondary);font-size:.72rem">GB/month</td><td style="color:var(--text-secondary)">\u2014</td><td style="color:var(--orange)">'+fmtUnit(K8S_STORAGE_PRICE_MO)+'</td></tr>';
+  h+='<tr><td style="padding-left:1.5rem">Persistent Volume</td><td style="color:var(--text-secondary);font-size:.72rem">GB/month</td><td style="color:var(--green)">'+fmtUnit(k8sSubPrice().storage)+'</td><td style="color:var(--text-secondary)">\u2014</td></tr>';
 
   h+='</tbody></table>';
   el.innerHTML=h;
@@ -1140,40 +1140,37 @@ function calcK8sBurst(){
 
 function buildK8sPanel(){
   var el=$('panel-k8s');if(!el)return;
-  var pS=k8sSubPrice(),pB=k8sBurstPrice();
+  var pS=k8sSubPrice();
   var cSub=k8sState.nodes*(k8sState.vcpu*pS.vcpu+k8sState.ram*pS.ram)*730;
-  var cBurst=k8sState.nodes*(k8sState.vcpu*pB.vcpu+k8sState.ram*pB.ram)*730;
   var sSub=k8sState.storageGB*pS.storage;
-  var sBurst=k8sState.storageGB*pB.storage;
   var h='';
-  h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">Kubernetes cluster sizing — priced at CloudSigma VM rates (Intel vCPU + RAM + SSD), subscription &amp; burst.</div>';
-  h+='<div class="price-col-headers" style="max-width:200px;margin-left:auto"><div class="price-col-hdr sub">📗 Subscription</div><div class="price-col-hdr burst">📙 Burst</div></div>';
+  h+='<div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary)">Kubernetes cluster sizing — priced at CloudSigma VM rates (Intel vCPU + RAM + SSD), subscription only.</div>';
+  h+='<div class="price-col-headers" style="max-width:120px;margin-left:auto"><div class="price-col-hdr sub">📗 Subscription</div></div>';
 
   h+='<div class="vm-row"><div class="vm-row-label">Worker Nodes '+infoBubble('k8s_nodes')+'</div>';
   h+='<div class="vm-row-input"><input type="number" id="k8s_nodes" min="0" max="500" step="1" value="'+k8sState.nodes+'"> <span class="vm-row-unit">nodes</span></div>';
   h+='<div style="flex:1"></div></div>';
 
-  h+='<div class="vm-row"><div class="vm-row-label">vCPU per Node '+infoBubble('k8s_vcpu')+'</div>';
+  h+='<div class="vm-row"><div class="vm-row-label">vCPU per Node '+infoBubble('k8s_vcpu')+'<span style="font-size:.65rem;color:var(--text-secondary);margin-left:.4rem">'+fmtUnit(pS.vcpu)+'/vCPU/hr</span></div>';
   h+='<div class="vm-row-input"><input type="number" id="k8s_vcpu" min="1" max="256" step="1" value="'+k8sState.vcpu+'"> <span class="vm-row-unit">vCPUs</span></div>';
   h+='<div style="flex:1"></div></div>';
 
-  h+='<div class="vm-row"><div class="vm-row-label">RAM per Node '+infoBubble('k8s_ram')+'</div>';
+  h+='<div class="vm-row"><div class="vm-row-label">RAM per Node '+infoBubble('k8s_ram')+'<span style="font-size:.65rem;color:var(--text-secondary);margin-left:.4rem">'+fmtUnit(pS.ram)+'/GB/hr</span></div>';
   h+='<div class="vm-row-input"><input type="number" id="k8s_ram" min="1" max="1024" step="1" value="'+k8sState.ram+'"> <span class="vm-row-unit">GB</span></div>';
   h+='<div style="flex:1"></div></div>';
 
   h+='<div class="vm-row"><div class="vm-row-label">Compute (all nodes)</div>';
   h+='<div style="flex:1"></div>';
-  h+=priceCell(cSub,cBurst,'pk8s_compute_sub','pk8s_compute_burst')+'</div>';
+  h+='<div class="vm-row-prices"><div class="vm-row-price-sub" id="pk8s_compute_sub">'+fmt(cSub)+'</div></div></div>';
 
-  h+='<div class="vm-row"><div class="vm-row-label">Persistent Storage '+infoBubble('k8s_storage')+'</div>';
+  h+='<div class="vm-row"><div class="vm-row-label">Persistent Storage '+infoBubble('k8s_storage')+'<span style="font-size:.65rem;color:var(--text-secondary);margin-left:.4rem">'+fmtUnit(pS.storage)+'/GB/mo</span></div>';
   h+='<div class="vm-row-input"><input type="number" id="k8s_storageGB" min="0" max="500000" step="100" value="'+k8sState.storageGB+'"> <span class="vm-row-unit">GB</span></div>';
-  h+=priceCell(sSub,sBurst,'pk8s_sto_sub','pk8s_sto_burst')+'</div>';
+  h+='<div class="vm-row-prices"><div class="vm-row-price-sub" id="pk8s_sto_sub">'+fmt(sSub)+'</div></div></div>';
 
   h+='<div id="k8s_summary" style="margin-top:.5rem;font-size:.75rem;color:var(--text-secondary)">';
   if(k8sState.nodes>0){
     h+='<strong>'+k8sState.nodes+'</strong> node(s) × '+k8sState.vcpu+' vCPU / '+k8sState.ram+' GB';
     h+=' &bull; Sub: <strong>'+fmt(cSub+sSub)+'</strong>/mo';
-    h+=' &bull; Burst: <strong>'+fmt(cBurst+sBurst)+'</strong>/mo';
   }
   h+='</div>';
   el.innerHTML=h;
@@ -1183,19 +1180,17 @@ function buildK8sPanel(){
     k8sState.vcpu=parseInt($('k8s_vcpu').value)||1;
     k8sState.ram=parseInt($('k8s_ram').value)||1;
     k8sState.storageGB=parseInt($('k8s_storageGB').value)||0;
-    var pS2=k8sSubPrice(),pB2=k8sBurstPrice();
+    var pS2=k8sSubPrice();
     var cS2=k8sState.nodes*(k8sState.vcpu*pS2.vcpu+k8sState.ram*pS2.ram)*730;
-    var cB2=k8sState.nodes*(k8sState.vcpu*pB2.vcpu+k8sState.ram*pB2.ram)*730;
-    var sS2=k8sState.storageGB*pS2.storage;var sB2=k8sState.storageGB*pB2.storage;
+    var sS2=k8sState.storageGB*pS2.storage;
     function sv(id,v){var e=$(id);if(e)e.textContent=fmt(v);}
-    sv('pk8s_compute_sub',cS2);sv('pk8s_compute_burst',cB2);
-    sv('pk8s_sto_sub',sS2);sv('pk8s_sto_burst',sB2);
+    sv('pk8s_compute_sub',cS2);
+    sv('pk8s_sto_sub',sS2);
     var sum=$('k8s_summary');
     if(sum){
       if(k8sState.nodes>0){
         sum.innerHTML='<strong>'+k8sState.nodes+'</strong> node(s) × '+k8sState.vcpu+' vCPU / '+k8sState.ram+' GB'
-          +' &bull; Sub: <strong>'+fmt(cS2+sS2)+'</strong>/mo'
-          +' &bull; Burst: <strong>'+fmt(cB2+sB2)+'</strong>/mo';
+          +' &bull; Sub: <strong>'+fmt(cS2+sS2)+'</strong>/mo';
       }else{sum.innerHTML='';}
     }
     recalc();
@@ -1737,6 +1732,36 @@ window.delOverride=async function(loc,r){await fetch('/api/admin/overrides/'+loc
 /* ────── Save Quote to backend ────── */
 // _savedQuoteId tracks the current loaded/saved quote ID to avoid opportunityId drift
 var _savedQuoteId=null;
+
+function newQuote(){
+  if(!confirm('Start a new quote? All unsaved changes will be lost.'))return;
+  // Reset quote identity
+  opportunityId=crypto.randomUUID?crypto.randomUUID():('q-'+Date.now());
+  _savedQuoteId=null;
+  // Reset quote meta fields
+  ['quoteOpportunityId','quoteCustomer','quoteOpportunity','quoteQuoteName','quoteOwner'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+  // Reset all resource state
+  vmLines=[];
+  Object.keys(objStorageState).forEach(function(k){objStorageState[k]=0;});
+  netState={tx:0,txQty:0,bandwidth:''};
+  dpState={migration:0,backup:0,backupCapacity:0,dr:0};
+  paasState={};
+  ofState={compute:0,storage:0};
+  taasState={};
+  k8sState={nodes:0,vcpu:4,ram:8,storageGB:0};
+  // Re-render everything
+  renderVmTable();buildObjPanel();buildNetPanel();buildDpPanel();buildPaasPanel();buildOfPanel();buildTaasPanel();buildK8sPanel();
+  recalc();
+  // Clear locbar quote info
+  ['locbarQuoteName','locbarCustomerLabel','locbarOppLabel','locbarTotalSub','locbarTotalBurst','locbarTotalCombined'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.textContent=id.includes('Total')?'$0.00':'';
+  });
+  var banner=document.getElementById('topbarQuoteBanner');if(banner)banner.style.display='none';
+  navTo('vm');
+}
+window.newQuote=newQuote;
 
 async function saveQuote(){
   var data=collectQuoteData();
