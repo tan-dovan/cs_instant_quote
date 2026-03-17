@@ -1759,6 +1759,7 @@ function newQuote(){
     var el=document.getElementById(id);if(el)el.textContent=id.includes('Total')?'$0.00':'';
   });
   var banner=document.getElementById('topbarQuoteBanner');if(banner)banner.style.display='none';
+  var qmb=document.getElementById('quoteMetaBar');if(qmb)qmb.classList.remove('visible');
   navTo('vm');
 }
 window.newQuote=newQuote;
