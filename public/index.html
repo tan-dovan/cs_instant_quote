@@ -272,13 +272,15 @@
     }
     #quoteMetaBar{
       background:var(--bg-card);border-bottom:1px solid var(--border-color);
-      padding:.3rem 1.5rem;display:none;align-items:center;gap:.5rem;
-      position:sticky;top:41px;z-index:89;flex-wrap:wrap;
+      padding:.3rem 1.5rem;display:flex;align-items:center;gap:.65rem;
+      position:sticky;top:0;z-index:88;flex-wrap:wrap;
     }
-    #quoteMetaBar.visible{display:flex}
-    #quoteMetaBar .qmb-label{font-size:.68rem;color:var(--text-secondary);white-space:nowrap}
-    #quoteMetaBar .qmb-value{font-size:.8rem;font-weight:700;color:var(--text-heading);white-space:nowrap}
-    #quoteMetaBar .qmb-sep{color:var(--border-color);font-size:.9rem;margin:0 .15rem}
+    #quoteMetaBar .qmb-label{font-size:.65rem;color:var(--text-secondary);white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+    #quoteMetaBar .qmb-input{font-size:.8rem;font-weight:700;color:var(--text-heading);background:transparent;border:none;border-bottom:1px dashed var(--border-color);outline:none;padding:.05rem .2rem;min-width:80px;max-width:220px;font-family:inherit;cursor:text}
+    #quoteMetaBar .qmb-input:focus{border-bottom-color:var(--cs-green);background:var(--bg-input);border-radius:3px 3px 0 0}
+    #quoteMetaBar .qmb-input::placeholder{color:var(--text-secondary);font-weight:400}
+    #quoteMetaBar .qmb-sep{color:var(--border-color);font-size:.9rem;margin:0 .1rem}
+    #quoteMetaBar .qmb-save-indicator{font-size:.65rem;color:var(--green);opacity:0;transition:opacity .3s;margin-left:.5rem}
     #locBar label{margin:0;font-size:.75rem;white-space:nowrap;color:var(--text-secondary)}
     #locBar select{padding:.28rem .45rem;font-size:.8rem}
     #locBar #currencyInfo{font-size:.75rem;color:var(--text-secondary);white-space:nowrap}
@@ -497,16 +499,17 @@
     </div>
   </div>
 
-  <!-- Quote meta bar (shows below locBar when a quote is loaded) -->
+  <!-- Quote meta bar — always visible, fields editable with auto-save -->
   <div id="quoteMetaBar">
-    <span class="qmb-label">Quote</span>
-    <span class="qmb-value" id="qmbQuoteName">—</span>
+    <span class="qmb-label">Opportunity</span>
+    <input class="qmb-input" id="qmbOpportunity" placeholder="Opportunity name" title="Click to edit" autocomplete="off">
     <span class="qmb-sep">·</span>
     <span class="qmb-label">Customer</span>
-    <span class="qmb-value" id="qmbCustomer">—</span>
+    <input class="qmb-input" id="qmbCustomer" placeholder="Customer name" title="Click to edit" autocomplete="off">
     <span class="qmb-sep">·</span>
-    <span class="qmb-label">Opportunity</span>
-    <span class="qmb-value" id="qmbOpportunity">—</span>
+    <span class="qmb-label">Quote name</span>
+    <input class="qmb-input" id="qmbQuoteName" placeholder="Quote / Project name" title="Click to edit" autocomplete="off">
+    <span class="qmb-save-indicator" id="qmbSaveIndicator">✓ saved</span>
   </div>
 
   <!-- Pages -->
@@ -921,18 +924,16 @@ function syncSidebarTotals(){
   if(topName){topName.textContent=quoteLabel;}
   if(topCust){topCust.textContent=custVal||'';}
   if(topOpp){topOpp.textContent=oppVal||'';}
-  // quote meta bar (below locbar)
-  var qmb=document.getElementById('quoteMetaBar');
-  var qmbQ=document.getElementById('qmbQuoteName');
-  var qmbC=document.getElementById('qmbCustomer');
-  var qmbO=document.getElementById('qmbOpportunity');
-  var quoteNameVal=oppVal||custVal||'';
-  if(qmbQ)qmbQ.textContent=quoteNameVal||'—';
-  if(qmbC)qmbC.textContent=custVal||'—';
-  if(qmbO)qmbO.textContent=oppVal||'—';
-  if(qmb){if(quoteNameVal||custVal||oppVal){qmb.classList.add('visible');}else{qmb.classList.remove('visible');}}
+  // sync qmb inputs from source fields
+  var qmbO=document.getElementById("qmbOpportunity");
+  var qmbC=document.getElementById("qmbCustomer");
+  var qmbQN=document.getElementById("qmbQuoteName");
+  if(qmbO&&document.activeElement!==qmbO)qmbO.value=oppVal||"";
+  if(qmbC&&document.activeElement!==qmbC)qmbC.value=custVal||"";
+  if(qmbQN&&document.activeElement!==qmbQN&&!qmbQN._dirty)qmbQN.value=oppVal||custVal||"";
 }
 setInterval(syncSidebarTotals,300);
+
 </script>
 <script src="app.js"></script>
 <script>
@@ -1390,6 +1391,37 @@ function setUserRole(userId,role){
     .then(function(d){if(d.error)alert(d.error);else loadAdminPanel();})
     .catch(function(){alert('Failed to update role.');});
 }
+
+// ── Quote meta bar: auto-save on change ──────────────────────────────
+(function(){
+  var saveTimer=null;
+  function qmbSave(){
+    var oppEl=document.getElementById('qmbOpportunity');
+    var custEl=document.getElementById('qmbCustomer');
+    var qnEl=document.getElementById('qmbQuoteName');
+    var ind=document.getElementById('qmbSaveIndicator');
+    var oppSrc=document.getElementById('quoteOpportunity');
+    var custSrc=document.getElementById('quoteCustomer');
+    if(oppEl&&oppSrc&&oppEl.value!==undefined)oppSrc.value=oppEl.value;
+    if(custEl&&custSrc&&custEl.value!==undefined)custSrc.value=custEl.value;
+    if(saveTimer)clearTimeout(saveTimer);
+    saveTimer=setTimeout(function(){
+      if(window.saveQuote)window.saveQuote();
+      if(ind){ind.style.opacity='1';setTimeout(function(){ind.style.opacity='0';},2000);}
+    },1200);
+  }
+  function wireQmb(){
+    ['qmbOpportunity','qmbCustomer','qmbQuoteName'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(!el||el._wired)return;
+      el._wired=true;
+      el.addEventListener('input',qmbSave);
+    });
+  }
+  // Wire immediately and again after app.js init (which may replace DOM)
+  wireQmb();
+  setTimeout(wireQmb,1500);
+})();
 window.setUserRole=setUserRole;
 </script>
 </body>
