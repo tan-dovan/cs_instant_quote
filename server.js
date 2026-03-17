@@ -61,6 +61,19 @@ app.get('/api/git-info', (req, res) => {
   res.json(getGitInfo());
 });
 
+// Temporary debug: check session + headers (remove after debugging)
+app.get('/api/debug-session', (req, res) => {
+  res.json({
+    secure: req.secure,
+    proto: req.headers['x-forwarded-proto'],
+    host: req.headers['host'],
+    sessionID: req.sessionID,
+    isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
+    user: req.user ? { email: req.user.email, role: req.user.role } : null,
+    cookies: Object.keys(req.cookies || {}),
+  });
+});
+
 // ─── Admin Price Overrides (persist to JSON file) ───────────────────────
 const OVERRIDES_FILE = path.join(__dirname, 'price_overrides.json');
 let priceOverrides = {};
