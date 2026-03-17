@@ -409,32 +409,77 @@ function quoteToSummary(q, extra = {}) {
   };
 }
 
-// ── POST /api/quotes — save/update (auth required) ────────────────────
-app.post('/api/quotes', requireAuth, (req, res) => {
+// ── Helper: check if user can edit a quote (owner, admin, or shared) ──
+async function canEditQuote(q, user) {
+  if (!q) return false;
+  if (user.role === 'admin') return true;
+  if (q.ownerId === user.id) return true;
+  // Check share record
+  try {
+    const row = await dbGet('SELECT id FROM quote_shares WHERE quote_id = ? AND shared_with = ?', [q.opportunityId, user.id]);
+    if (row) return true;
+  } catch(e) {}
+  return false;
+}
+
+// ── POST /api/quotes — create new quote (auth required) ───────────────
+app.post('/api/quotes', requireAuth, async (req, res) => {
   const data = req.body;
   if (!data || !data.opportunityId) {
     return res.status(400).json({ error: 'opportunityId is required' });
   }
   const id  = data.opportunityId;
   const existing = quotesDB[id];
-  // Ownership check: only owner or admin can update
-  if (existing && existing.ownerId && existing.ownerId !== req.user.id && req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Not your quote' });
-  }
-  data.savedAt = new Date().toISOString();
+
+  // If quote already exists, check edit permission (owner, admin, or shared)
   if (existing) {
-    data.updatedAt  = data.savedAt;
-    data.createdAt  = existing.createdAt || data.savedAt;
+    const allowed = await canEditQuote(existing, req.user);
+    if (!allowed) return res.status(403).json({ error: 'Not your quote' });
+  }
+
+  const now = new Date().toISOString();
+  data.savedAt = now;
+  if (existing) {
+    data.updatedAt  = now;
+    data.updatedBy  = req.user.email;
+    data.createdAt  = existing.createdAt || now;
     data.ownerId    = existing.ownerId    || req.user.id;
     data.ownerEmail = existing.ownerEmail || req.user.email;
   } else {
-    data.createdAt  = data.savedAt;
+    data.createdAt  = now;
     data.ownerId    = req.user.id;
     data.ownerEmail = req.user.email;
+    data.updatedBy  = req.user.email;
   }
   quotesDB[id] = data;
   saveQuotesDB();
   res.json({ success: true, opportunityId: id, action: existing ? 'updated' : 'created' });
+});
+
+// ── PUT /api/quotes/:id — explicit update (auth required, owner/admin/shared) ─
+app.put('/api/quotes/:id', requireAuth, async (req, res) => {
+  const id = req.params.id;
+  const existing = quotesDB[id];
+  if (!existing) return res.status(404).json({ error: 'Quote not found' });
+
+  const allowed = await canEditQuote(existing, req.user);
+  if (!allowed) return res.status(403).json({ error: 'Not your quote' });
+
+  const data = req.body;
+  if (!data) return res.status(400).json({ error: 'No data provided' });
+
+  const now = new Date().toISOString();
+  data.opportunityId = id;           // enforce correct ID — no drift
+  data.savedAt    = now;
+  data.updatedAt  = now;
+  data.updatedBy  = req.user.email;
+  data.createdAt  = existing.createdAt || now;
+  data.ownerId    = existing.ownerId   || req.user.id;
+  data.ownerEmail = existing.ownerEmail || req.user.email;
+
+  quotesDB[id] = data;
+  saveQuotesDB();
+  res.json({ success: true, opportunityId: id, action: 'updated' });
 });
 
 // ── GET /api/quotes — list (auth required, RBAC filtered) ────────────
