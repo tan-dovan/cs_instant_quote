@@ -403,10 +403,12 @@ function quoteToSummary(q, extra = {}) {
     ownerEmail:     q.ownerEmail || null,
     resourceSummary: {
       vmConfigs: vmCount, totalVMs,
-      hasPaas:       !!(q.paas       && q.paas.total > 0),
-      hasOmnifabric: !!(q.omnifabric && q.omnifabric.total > 0),
-      hasTaas:       !!(q.taas       && q.taas.total > 0),
-      hasKubernetes: !!(q.kubernetes && q.kubernetes.total > 0),
+      hasPaas:           !!(q.paas           && q.paas.total > 0),
+      hasOmnifabric:     !!(q.omnifabric      && q.omnifabric.total > 0),
+      hasTaas:           !!(q.taas            && q.taas.total > 0),
+      hasKubernetes:     !!(q.kubernetes      && q.kubernetes.total > 0),
+      hasNetwork:        !!(q.network         && q.network.length > 0),
+      hasDataProtection: !!(q.dataProtection  && (q.dataProtection.upfront > 0 || q.dataProtection.subscription > 0)),
     },
     savedAt: q.savedAt, createdAt: q.createdAt, updatedAt: q.updatedAt || null,
     ...extra
