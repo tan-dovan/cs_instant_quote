@@ -50,8 +50,10 @@ passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await get('SELECT * FROM users WHERE id = ?', [id]);
+    if (!user) console.error('[AUTH] deserializeUser: no user found for id', id);
     done(null, user || false);
   } catch (err) {
+    console.error('[AUTH] deserializeUser error:', err.message);
     done(err);
   }
 });
@@ -80,8 +82,8 @@ function sessionMiddleware(app) {
 // ── Auth guard middleware ──────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (req.isAuthenticated && req.isAuthenticated()) return next();
-  // API → 401 JSON; browser → redirect to login
-  if (req.headers.accept && req.headers.accept.includes('application/json')) {
+  // Always return 401 JSON for /api/* routes so fetch .catch works correctly
+  if (req.path && req.path.startsWith('/api/')) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
   res.redirect('/login.html');

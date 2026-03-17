@@ -1027,7 +1027,7 @@ var _currentUser=null;
         if(na)na.style.display='flex';
       }
     })
-    .catch(function(){window.location.href='/login.html';});
+    .catch(function(e){console.warn('[IQT] /api/me failed:',e);window.location.href='/login.html';});
 })();
 
 // ── My Quotes ─────────────────────────────────────────────────────────
