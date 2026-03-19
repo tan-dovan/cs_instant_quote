@@ -409,6 +409,15 @@ function quoteToSummary(q, extra = {}) {
       hasKubernetes:     !!(q.kubernetes      && q.kubernetes.total > 0),
       hasNetwork:        !!(q.network         && q.network.length > 0),
       hasDataProtection: !!(q.dataProtection  && (q.dataProtection.upfront > 0 || q.dataProtection.subscription > 0)),
+      // Per-resource subtotals from breakdown (for accurate admin chart)
+      vmTotal:           (q.breakdown && q.breakdown['⚡ Compute & Storage']) || 0,
+      networkTotal:      (q.breakdown && q.breakdown['🌐 Network']) || 0,
+      paasTotal:         (q.paas      && q.paas.total)       || 0,
+      omnifabricTotal:   (q.omnifabric && q.omnifabric.total) || 0,
+      taasTotal:         (q.taas      && q.taas.total)       || 0,
+      kubernetesTotal:   (q.kubernetes && q.kubernetes.total) || 0,
+      dpTotal:           ((q.dataProtection && q.dataProtection.subscription) || 0) +
+                         ((q.dataProtection && q.dataProtection.upfront)      || 0),
     },
     savedAt: q.savedAt, createdAt: q.createdAt, updatedAt: q.updatedAt || null,
     ...extra

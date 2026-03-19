@@ -106,13 +106,9 @@
       margin-left:var(--sidebar-w);flex:1;
       display:flex;flex-direction:column;min-height:100vh;
     }
-    #topbar{
-      background:var(--bg-card);border-bottom:1px solid var(--border-color);
-      padding:.6rem 1.5rem;display:flex;align-items:center;gap:1rem;
-      position:sticky;top:0;z-index:100;
-    }
-    #topbar-title{font-size:1rem;font-weight:700;color:var(--text-heading);flex:1}
-    #topbar-sub{font-size:.75rem;color:var(--text-secondary)}
+    #topbar{display:none}
+    #topbar-title{display:none}
+    #topbar-sub{display:none}
 
     #main-content{flex:1;padding:1.5rem}
 
@@ -266,21 +262,12 @@
 
     /* ── Location bar (persistent) ── */
     #locBar{
-      background:var(--bg-header);border-bottom:1px solid var(--border-color);
-      padding:.45rem 1.5rem;display:flex;align-items:center;gap:1.25rem;
-      flex-wrap:wrap;position:sticky;top:0;z-index:90;
-    }
-    #quoteMetaBar{
       background:var(--bg-card);border-bottom:1px solid var(--border-color);
-      padding:.3rem 1.5rem;display:flex;align-items:center;gap:.65rem;
-      position:sticky;top:0;z-index:88;flex-wrap:wrap;
+      padding:.4rem .8rem .4rem 1rem;display:flex;align-items:stretch;gap:.9rem;
+      flex-wrap:nowrap;position:sticky;top:0;z-index:100;
+      box-shadow:0 1px 4px rgba(0,0,0,.12);
     }
-    #quoteMetaBar .qmb-label{font-size:.65rem;color:var(--text-secondary);white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
-    #quoteMetaBar .qmb-input{font-size:.8rem;font-weight:700;color:var(--text-heading);background:transparent;border:none;border-bottom:1px dashed var(--border-color);outline:none;padding:.05rem .2rem;min-width:80px;max-width:220px;font-family:inherit;cursor:text}
-    #quoteMetaBar .qmb-input:focus{border-bottom-color:var(--cs-green);background:var(--bg-input);border-radius:3px 3px 0 0}
-    #quoteMetaBar .qmb-input::placeholder{color:var(--text-secondary);font-weight:400}
-    #quoteMetaBar .qmb-sep{color:var(--border-color);font-size:.9rem;margin:0 .1rem}
-    #quoteMetaBar .qmb-save-indicator{font-size:.65rem;color:var(--green);opacity:0;transition:opacity .3s;margin-left:.5rem}
+
     #locBar label{margin:0;font-size:.75rem;white-space:nowrap;color:var(--text-secondary)}
     #locBar select{padding:.28rem .45rem;font-size:.8rem}
     #locBar #currencyInfo{font-size:.75rem;color:var(--text-secondary);white-space:nowrap}
@@ -451,66 +438,69 @@
 <div id="main-wrapper">
   <div class="top-accent-bar"></div>
 
-  <!-- Topbar -->
-  <div id="topbar">
-    <button id="sidebarToggle" onclick="openSidebar()" title="Menu">☰</button>
-    <div style="flex:1;min-width:0">
-      <div id="topbar-title">My Quotes</div>
-      <div id="topbar-sub" style="font-size:.72rem;color:var(--text-secondary)">CloudSigma Instant Quoting Tool</div>
-    </div>
-    <div id="topbarQuoteBanner" style="display:none;flex-direction:column;align-items:flex-end;gap:.05rem;margin-left:auto;padding-right:.5rem">
-      <div id="topbarQuoteNameBig" style="font-size:1.15rem;font-weight:800;color:var(--text-heading);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;line-height:1.1"></div>
-      <div style="display:flex;gap:.5rem;align-items:center;font-size:.68rem;color:var(--text-secondary)">
-        <span id="topbarCustMeta"></span>
-        <span id="topbarOppMeta" style="color:var(--blue);font-weight:600"></span>
-      </div>
-    </div>
+  <!-- Hidden topbar (kept for JS compat) -->
+  <div id="topbar" style="display:none">
+    <div id="topbar-title"></div>
+    <div id="topbar-sub"></div>
   </div>
 
-  <!-- Location bar (persistent) -->
+  <!-- Unified bar: [☰ | dropdowns | buttons-below] [quote banner right] -->
   <div id="locBar">
-    <div class="locbar-group">
-      <label>📍 Location</label>
-      <select id="locationSelect"></select>
-    </div>
-    <div class="locbar-group">
-      <label>💱 Currency</label>
-      <select id="currencySelect"><option value="USD">USD (US Dollar)</option></select>
-    </div>
-    <div id="currencyInfo">—</div>
-    <div class="locbar-actions">
-      <div id="locbarQuoteInfo" style="display:flex;flex-direction:column;align-items:flex-end;gap:.1rem;margin-right:.5rem">
-        <div style="display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-          <span id="locbarCustomerLabel" style="font-size:.68rem;color:var(--text-secondary);white-space:nowrap"></span>
-          <span id="locbarOppLabel" style="font-size:.68rem;font-weight:600;color:var(--blue);white-space:nowrap"></span>
-          <span id="locbarQuoteName" style="font-size:.72rem;font-weight:700;color:var(--text-heading);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis" title=""></span>
+    <!-- Left: toggle + location/currency stacked, with buttons below -->
+    <button id="sidebarToggle" onclick="openSidebar()" title="Menu" style="background:none;border:none;cursor:pointer;padding:.3rem .4rem;color:var(--text-primary);font-size:1.1rem;flex-shrink:0;align-self:center">☰</button>
+    <div style="display:flex;flex-direction:column;gap:.3rem">
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:nowrap">
+        <div class="locbar-group">
+          <label>📍</label>
+          <select id="locationSelect"></select>
         </div>
-        <div style="display:flex;gap:.6rem;align-items:baseline">
-          <span style="font-size:.78rem;color:var(--green)">Sub <span id="locbarTotalSub" style="font-weight:800">$0.00</span></span>
-          <span style="font-size:.78rem;color:var(--orange)">Burst <span id="locbarTotalBurst" style="font-weight:800">$0.00</span></span>
-          <span style="font-size:1rem;font-weight:800;color:var(--cs-green)" id="locbarTotalCombined">$0.00</span>
+        <div class="locbar-group">
+          <label>💱</label>
+          <select id="currencySelect"><option value="USD">USD (US Dollar)</option></select>
+        </div>
+        <div id="currencyInfo" style="font-size:.72rem;color:var(--text-secondary);white-space:nowrap;display:none"></div>
+      </div>
+      <div class="locbar-actions" style="margin-left:0">
+        <button class="locbar-btn locbar-btn-new" onclick="newQuote()" title="New Quote">✨ New</button>
+        <button class="locbar-btn locbar-btn-save" onclick="saveQuote()" title="Save Quote">💾 Save</button>
+        <button class="locbar-btn locbar-btn-load" onclick="navTo('myquotes')" title="Load Quote">📂 Load</button>
+        <button class="locbar-btn locbar-btn-pdf" onclick="exportPDF()" title="Export PDF">📄 PDF</button>
+        <button class="locbar-btn locbar-btn-json" onclick="exportJSON()" title="Export JSON">📋 JSON</button>
+      </div>
+    </div>
+    <!-- Right: quote banner -->
+    <div id="topbarQuoteBanner" style="display:none;flex-direction:column;align-items:flex-end;gap:.1rem;margin-left:auto;padding-left:1rem;border-left:1px solid var(--border-color)">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.1rem">
+        <input id="topbarCustomerInput" placeholder="Customer name"
+          style="font-size:.82rem;font-weight:600;color:var(--text-secondary);background:transparent;border:none;border-bottom:1px dashed var(--border-color);outline:none;padding:.05rem .25rem;text-align:right;min-width:80px;max-width:240px;font-family:inherit;cursor:text"
+          autocomplete="off" title="Click to edit customer">
+        <input id="topbarQuoteNameBig" placeholder="Quote / opportunity name"
+          style="font-size:1.08rem;font-weight:800;color:var(--text-heading);background:transparent;border:none;border-bottom:1px dashed transparent;outline:none;padding:.05rem .25rem;text-align:right;min-width:100px;max-width:300px;font-family:inherit;cursor:text"
+          autocomplete="off" title="Click to edit quote name">
+        <span id="topbarSaveIndicator" style="font-size:.6rem;color:var(--green);opacity:0;transition:opacity .3s">✓ saved</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.06rem;border-top:1px solid var(--border-color);padding-top:.25rem;margin-top:.05rem">
+        <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;width:100%">
+          <span style="font-size:.65rem;color:var(--text-secondary)">Subscription</span>
+          <span style="font-size:.75rem;font-weight:700;color:var(--green)" id="topbarTotalSub">$0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;width:100%">
+          <span style="font-size:.65rem;color:var(--text-secondary)">Burst</span>
+          <span style="font-size:.75rem;font-weight:700;color:var(--orange)" id="topbarTotalBurst">$0.00</span>
+        </div>
+        <div id="topbarUpfrontRow" style="display:none;justify-content:space-between;gap:.6rem;align-items:baseline;width:100%">
+          <span style="font-size:.65rem;color:var(--text-secondary)">Upfront</span>
+          <span style="font-size:.75rem;font-weight:700;color:var(--blue)" id="topbarTotalUpfront">$0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;width:100%;border-top:1px solid var(--border-color);margin-top:.12rem;padding-top:.12rem">
+          <span style="font-size:.68rem;font-weight:700;color:var(--cs-green)">Total</span>
+          <span style="font-size:.92rem;font-weight:800;color:var(--cs-green)" id="topbarTotalCombined">$0.00</span>
         </div>
       </div>
-      <button class="locbar-btn locbar-btn-new" onclick="newQuote()" title="New Quote">✨ New</button>
-      <button class="locbar-btn locbar-btn-save" onclick="saveQuote()" title="Save Quote">💾 Save</button>
-      <button class="locbar-btn locbar-btn-load" onclick="navTo('myquotes')" title="Load Quote">📂 Load</button>
-      <button class="locbar-btn locbar-btn-pdf" onclick="exportPDF()" title="Export PDF">📄 PDF</button>
-      <button class="locbar-btn locbar-btn-json" onclick="exportJSON()" title="Export JSON">📋 JSON</button>
     </div>
   </div>
 
-  <!-- Quote meta bar — always visible, fields editable with auto-save -->
-  <div id="quoteMetaBar">
-    <span class="qmb-label">Opportunity</span>
-    <input class="qmb-input" id="qmbOpportunity" placeholder="Opportunity name" title="Click to edit" autocomplete="off">
-    <span class="qmb-sep">·</span>
-    <span class="qmb-label">Customer</span>
-    <input class="qmb-input" id="qmbCustomer" placeholder="Customer name" title="Click to edit" autocomplete="off">
-    <span class="qmb-sep">·</span>
-    <span class="qmb-label">Quote name</span>
-    <input class="qmb-input" id="qmbQuoteName" placeholder="Quote / Project name" title="Click to edit" autocomplete="off">
-    <span class="qmb-save-indicator" id="qmbSaveIndicator">✓ saved</span>
-  </div>
+
 
   <!-- Pages -->
   <div id="main-content">
@@ -896,41 +886,29 @@ function syncSidebarTotals(){
   var sub=document.getElementById('sectionTotalSub');
   var burst=document.getElementById('sectionTotalBurst');
   var combined=document.getElementById('sectionTotalCombined');
-  // locbar totals
-  var ls=document.getElementById('locbarTotalSub');
-  var lb=document.getElementById('locbarTotalBurst');
-  var lc=document.getElementById('locbarTotalCombined');
-  if(ls&&sub)ls.textContent=sub.textContent;
-  if(lb&&burst)lb.textContent=burst.textContent;
-  if(lc&&combined)lc.textContent=combined.textContent;
-  // locbar quote meta (customer / opp / quote name) + topbar banner
-  var opp=document.getElementById('quoteOpportunity');
-  var cust=document.getElementById('quoteCustomer');
-  var nameEl=document.getElementById('locbarQuoteName');
-  var custLbl=document.getElementById('locbarCustomerLabel');
-  var oppLbl=document.getElementById('locbarOppLabel');
+  // topbar totals
+  var ts=document.getElementById('topbarTotalSub');
+  var tb=document.getElementById('topbarTotalBurst');
+  var tc=document.getElementById('topbarTotalCombined');
+  if(ts&&sub)ts.textContent=sub.textContent;
+  if(tb&&burst)tb.textContent=burst.textContent;
+  if(tc&&combined)tc.textContent=combined.textContent;
+  // upfront row visibility handled by recalc() in app.js
+  // topbar banner quote name + customer
   var topBanner=document.getElementById('topbarQuoteBanner');
   var topName=document.getElementById('topbarQuoteNameBig');
-  var topCust=document.getElementById('topbarCustMeta');
-  var topOpp=document.getElementById('topbarOppMeta');
-  var custVal=cust&&cust.value.trim()||'';
-  var oppVal=opp&&opp.value.trim()||'';
+  var topCust=document.getElementById('topbarCustomerInput');
+  // If a quote is loaded, sync from source fields (don't overwrite if user is typing)
+  var opp=document.getElementById('quoteOpportunity');
+  var cust=document.getElementById('quoteCustomer');
+  var oppVal=(opp&&opp.value.trim())||(topName&&topName.value.trim())||'';
+  var custVal=(cust&&cust.value.trim())||(topCust&&topCust.value.trim())||'';
   var quoteLabel=oppVal||custVal||'';
-  if(nameEl){nameEl.textContent=quoteLabel?'📄 '+quoteLabel:'';nameEl.title=quoteLabel;}
-  if(custLbl){custLbl.textContent=custVal?'🏢 '+custVal:'';}
-  if(oppLbl){oppLbl.textContent=oppVal?'📋 '+oppVal:'';}
-  // topbar banner
-  if(topBanner){topBanner.style.display=quoteLabel?'flex':'none';}
-  if(topName){topName.textContent=quoteLabel;}
-  if(topCust){topCust.textContent=custVal||'';}
-  if(topOpp){topOpp.textContent=oppVal||'';}
-  // sync qmb inputs from source fields
-  var qmbO=document.getElementById("qmbOpportunity");
-  var qmbC=document.getElementById("qmbCustomer");
-  var qmbQN=document.getElementById("qmbQuoteName");
-  if(qmbO&&document.activeElement!==qmbO)qmbO.value=oppVal||"";
-  if(qmbC&&document.activeElement!==qmbC)qmbC.value=custVal||"";
-  if(qmbQN&&document.activeElement!==qmbQN&&!qmbQN._dirty)qmbQN.value=oppVal||custVal||"";
+  // Only show banner if we have a quote label OR a quote is loaded (_savedQuoteId set)
+  var hasQuote=quoteLabel||(window._savedQuoteId)||'';
+  if(topBanner){topBanner.style.display=hasQuote?'flex':'none';}
+  if(topName&&document.activeElement!==topName&&oppVal)topName.value=oppVal;
+  if(topCust&&document.activeElement!==topCust&&custVal)topCust.value=custVal;
 }
 setInterval(syncSidebarTotals,300);
 
@@ -1148,13 +1126,10 @@ function loadMyQuotes(){
 window.loadMyQuotes=loadMyQuotes;
 
 function loadQuoteIntoApp(id,goSummary){
-  fetch('/api/quotes/'+id)
-    .then(function(r){return r.json();})
-    .then(function(q){
-      if(typeof restoreQuote==='function')restoreQuote(q);
-      navTo(goSummary?'summary':'vm');
-    })
-    .catch(function(){alert('Failed to load quote.');});
+  if(typeof loadQuote!=='function'){alert('Load function not ready.');return;}
+  loadQuote(id).then(function(){
+    navTo(goSummary?'summary':'vm');
+  }).catch(function(){alert('Failed to load quote.');});
 }
 window.loadQuoteIntoApp=loadQuoteIntoApp;
 
@@ -1273,13 +1248,13 @@ function populateAdminDashboard(quotes,users){
     var u=q.ownerEmail||'Unknown';
     byUser[u]=(byUser[u]||0)+v;
     var rs=q.resourceSummary||{};
-    if(rs.totalVMs>0)byRes['VM']+=v;
-    if(rs.hasNetwork)byRes['Network']+=v;
-    if(rs.hasDataProtection)byRes['Data Protection']+=v;
-    if(rs.hasPaas)byRes['PaaS']+=v;
-    if(rs.hasKubernetes)byRes['Kubernetes']+=v;
-    if(rs.hasTaas)byRes['TaaS']+=v;
-    if(rs.hasOmnifabric)byRes['Omnifabric']+=v;
+    if(rs.totalVMs>0)byRes['VM']+=(rs.vmTotal||v);
+    if(rs.hasNetwork)byRes['Network']+=(rs.networkTotal||v);
+    if(rs.hasDataProtection)byRes['Data Protection']+=(rs.dpTotal||v);
+    if(rs.hasPaas)byRes['PaaS']+=(rs.paasTotal||v);
+    if(rs.hasKubernetes)byRes['Kubernetes']+=(rs.kubernetesTotal||v);
+    if(rs.hasTaas)byRes['TaaS']+=(rs.taasTotal||v);
+    if(rs.hasOmnifabric)byRes['Omnifabric']+=(rs.omnifabricTotal||v);
   });
   var avg=count?total/count:0;
 
@@ -1392,35 +1367,44 @@ function setUserRole(userId,role){
     .catch(function(){alert('Failed to update role.');});
 }
 
-// ── Quote meta bar: auto-save on change ──────────────────────────────
+// ── Topbar banner: auto-save on edit ─────────────────────────────────
 (function(){
   var saveTimer=null;
-  function qmbSave(){
-    var oppEl=document.getElementById('qmbOpportunity');
-    var custEl=document.getElementById('qmbCustomer');
-    var qnEl=document.getElementById('qmbQuoteName');
-    var ind=document.getElementById('qmbSaveIndicator');
+  function topbarSave(){
+    var nameEl=document.getElementById('topbarQuoteNameBig');
+    var custEl=document.getElementById('topbarCustomerInput');
+    var ind=document.getElementById('topbarSaveIndicator');
     var oppSrc=document.getElementById('quoteOpportunity');
     var custSrc=document.getElementById('quoteCustomer');
-    if(oppEl&&oppSrc&&oppEl.value!==undefined)oppSrc.value=oppEl.value;
-    if(custEl&&custSrc&&custEl.value!==undefined)custSrc.value=custEl.value;
+    // push values back to hidden source fields
+    if(nameEl&&oppSrc)oppSrc.value=nameEl.value;
+    if(custEl&&custSrc)custSrc.value=custEl.value;
     if(saveTimer)clearTimeout(saveTimer);
     saveTimer=setTimeout(function(){
       if(window.saveQuote)window.saveQuote();
       if(ind){ind.style.opacity='1';setTimeout(function(){ind.style.opacity='0';},2000);}
     },1200);
   }
-  function wireQmb(){
-    ['qmbOpportunity','qmbCustomer','qmbQuoteName'].forEach(function(id){
+  function wireTopbar(){
+    ['topbarQuoteNameBig','topbarCustomerInput'].forEach(function(id){
       var el=document.getElementById(id);
       if(!el||el._wired)return;
       el._wired=true;
-      el.addEventListener('input',qmbSave);
+      el.addEventListener('input',topbarSave);
+      el.addEventListener('focus',function(){
+        this.style.borderBottomColor='var(--cs-green)';
+        this.style.background='var(--bg-input)';
+        this.style.borderRadius='3px 3px 0 0';
+      });
+      el.addEventListener('blur',function(){
+        this.style.borderBottomColor='';
+        this.style.background='transparent';
+        this.style.borderRadius='';
+      });
     });
   }
-  // Wire immediately and again after app.js init (which may replace DOM)
-  wireQmb();
-  setTimeout(wireQmb,1500);
+  wireTopbar();
+  setTimeout(wireTopbar,1500);
 })();
 window.setUserRole=setUserRole;
 </script>

@@ -1300,14 +1300,14 @@ function recalc(){
   if(stS)stS.textContent=fmt(csSmart.subTotal);
   if(stB)stB.textContent=fmt(csSmart.burstTotal);
   if(stC)stC.textContent=fmt(csSmart.total);
-  // Locbar totals (direct update — no poll lag)
-  var ls=$('locbarTotalSub'),lb=$('locbarTotalBurst'),lc=$('locbarTotalCombined');
-  if(ls)ls.textContent=fmt(csSmart.subTotal);
-  if(lb)lb.textContent=fmt(csSmart.burstTotal);
-  if(lc)lc.textContent=fmt(csSmart.total);
-  // Locbar quote name
-  var opp=$('quoteOpportunity'),cust=$('quoteCustomer'),nameEl=$('locbarQuoteName');
-  if(nameEl){var lbl=(opp&&opp.value.trim())||(cust&&cust.value.trim())||'';nameEl.textContent=lbl?'\uD83D\uDCC4 '+lbl:'';nameEl.title=lbl;}
+  // Topbar totals (direct update — no poll lag)
+  var ts=$('topbarTotalSub'),tb=$('topbarTotalBurst'),tc=$('topbarTotalCombined');
+  var tu=$('topbarTotalUpfront'),tuRow=$('topbarUpfrontRow');
+  if(ts)ts.textContent=fmt(csSmart.subTotal);
+  if(tb)tb.textContent=fmt(csSmart.burstTotal);
+  if(tc)tc.textContent=fmt(csSmart.total);
+  if(tu)tu.textContent=fmt(csSmart.upfront||0);
+  if(tuRow)tuRow.style.display=(csSmart.upfront>0)?'flex':'none';
   // VM page sub-totals
   var vmSub=$('vmTotalSub'),vmBurst=$('vmTotalBurst');
   if(vmSub){var vsub=0;vmLines.forEach(function(vm){var q=vm.qty||1,cpuR=cpuResForVm(vm),memR=memResForVm(vm);vsub+=q*(vm.cpu*(vm.cpuSpeed||2)*csSubPrice(cpuR)*730+vm.ram*csSubPrice(memR)*730);vm.disks.forEach(function(d){vsub+=q*d.size*csSubPrice(d.type);});});if(vmSub)vmSub.textContent=fmt(vsub);}
@@ -1758,8 +1758,18 @@ function newQuote(){
   ['locbarQuoteName','locbarCustomerLabel','locbarOppLabel','locbarTotalSub','locbarTotalBurst','locbarTotalCombined'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.textContent=id.includes('Total')?'$0.00':'';
   });
-  var banner=document.getElementById('topbarQuoteBanner');if(banner)banner.style.display='none';
-  var qmb=document.getElementById('quoteMetaBar');if(qmb)qmb.classList.remove('visible');
+  // Auto-populate customer + opportunity from selected location
+  var locSel=document.getElementById('locationSelect');
+  var locName=locSel&&locSel.selectedOptions[0]?locSel.selectedOptions[0].textContent.trim():'';
+  var today=new Date();
+  var dateStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var autoCustomer=locName?'CloudSigma '+locName:'CloudSigma';
+  var autoOpp=locName?locName+' Quote '+dateStr:'New Quote '+dateStr;
+  if($('quoteCustomer'))$('quoteCustomer').value=autoCustomer;
+  if($('quoteOpportunity'))$('quoteOpportunity').value=autoOpp;
+  var banner=document.getElementById('topbarQuoteBanner');if(banner)banner.style.display='flex';
+  var tbn=document.getElementById('topbarQuoteNameBig');if(tbn)tbn.value=autoOpp;
+  var tbc=document.getElementById('topbarCustomerInput');if(tbc)tbc.value=autoCustomer;
   navTo('vm');
 }
 window.newQuote=newQuote;
@@ -1893,6 +1903,13 @@ async function loadQuote(id){
     if($('quoteCustomer'))$('quoteCustomer').value=q.customer||'';
     if($('quoteOpportunity'))$('quoteOpportunity').value=q.opportunityName||'';
     if($('quoteNotes'))$('quoteNotes').value=q.notes||'';
+    // Directly populate topbar inputs (don't wait for 300ms poll)
+    var tbn=document.getElementById('topbarQuoteNameBig');
+    var tbc=document.getElementById('topbarCustomerInput');
+    var tbBanner=document.getElementById('topbarQuoteBanner');
+    if(tbn)tbn.value=q.opportunityName||q.customer||'';
+    if(tbc)tbc.value=q.customer||'';
+    if(tbBanner)tbBanner.style.display='flex';
 
     // Restore VMs from specs
     if(q.virtualMachines&&q.virtualMachines.length>0){
